@@ -508,9 +508,9 @@ log "[SUCCESS] TEE for windows extracted."
 log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n[NOTE] Manually Add Patched ksu-n_boot.img, ksu-n_dtbo.img and magisk_boot.img in /images folder\n"
 
 download_with_fallback \
-    "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.0.5/KernelSU_Next_v1.0.5_12430-release.apk" \
-    "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/bin/files/KernelSU_Next_v1.0.5.apk" \
-    "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.0.5.apk" \
+    "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.0.6/KernelSU_Next_v1.0.6_12490-release.apk" \
+    "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/bin/files/KernelSU_Next_v1.0.6.apk" \
+    "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.0.6.apk" \
     "KSU-N"
 
 download_with_fallback \
