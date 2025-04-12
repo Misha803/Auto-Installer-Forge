@@ -95,7 +95,37 @@ change_slot() {
     #ui_print "$OUTPUT"
 }
 
-#check_file_and_hash() {
+check_file_and_hash() {
+    local file_path="$1"
+    local expected_hash="$2"
+
+    if ! unzip -l "$UPD_ZIP" | grep -q " $file_path$"; then
+	    ui_print " "
+        ui_print " Error: $file_path not found in the auto-installer pakage!"
+		ui_print " "
+        ui_print " Your download may be corrupted. Please download again."
+        ui_print " If the issue persists, send a screenshot in the group for help."
+		ui_print ""
+        exit 1
+    fi
+    local actual_hash
+    actual_hash=$(unzip -p "$UPD_ZIP" "$file_path" | $UPD_TEMP_FOLDER/busybox sha256sum | $UPD_TEMP_FOLDER/busybox awk '{print $1}')
+    if [ "$actual_hash" != "$expected_hash" ]; then
+	ui_print " "
+        ui_print " SHA-256 mismatch for $file_path!"
+	ui_print " "
+        ui_print " Expected: $expected_hash"
+        ui_print " Got:      $actual_hash"
+	ui_print " "
+        ui_print " Your download may be corrupted. Please download again."
+        ui_print " If the issue persists, send a screenshot in the group for help."
+	ui_print " "
+        exit 1
+    fi
+    #ui_print "SHA-256 verification passed for $file_path"
+	#ui_print " "
+}
+
 check_file() {
     local file_path="$1"
     #local expected_hash="$2"
@@ -109,22 +139,6 @@ check_file() {
 		ui_print ""
         exit 1
     fi
-    #local actual_hash
-    #actual_hash=$(unzip -p "$UPD_ZIP" "$file_path" | $UPD_TEMP_FOLDER/busybox sha256sum | $UPD_TEMP_FOLDER/busybox awk '{print $1}')
-    #if [ "$actual_hash" != "$expected_hash" ]; then
-		#ui_print " "
-        #ui_print " SHA-256 mismatch for $file_path!"
-		#ui_print " "
-        #ui_print " Expected: $expected_hash"
-        #ui_print " Got:      $actual_hash"
-		#ui_print " "
-        #ui_print " Your download may be corrupted. Please download again."
-        #ui_print " If the issue persists, send a screenshot in the group for help."
-		#ui_print " "
-        #exit 1
-    #fi
-    #ui_print "SHA-256 verification passed for $file_path"
-	#ui_print " "
 }
 
 volumekey() {
