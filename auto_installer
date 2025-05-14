@@ -118,7 +118,7 @@ download_with_fallback() {
 
 # Function to patch boot.img with magisk
 patch_magisk_boot() {
-    log "[INFO] Patching boot.img with Magisk 28.1...\n"
+    log "[INFO] Patching boot.img with Magisk 29.0...\n"
 
     # Unzip only assets and lib folders; if unzip fails, exit
     if ! $BIN_DIR/busybox unzip -q -o "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/Magisk_v29.0.apk" "assets/*" "lib/*" -d "$MAGISK_DIR"; then
