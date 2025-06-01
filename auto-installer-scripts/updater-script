@@ -1,0 +1,56 @@
+#!/sbin/sh
+#
+# Copyright (C) 2025-26 https://github.com/ArKT-7/Auto-Installer-Forge
+#
+# Made for flashing Android ROMs in recovery easily
+#
+
+# ================= Load Config =================
+source "$CONFIG_FILE"
+
+# ======================= UI Prints / Functions / Execution ========================
+print_line
+print_ascii
+nln_print_centered "Are you ready for the $ROM_NAME?"
+print_line
+verify_device
+ui_print " "
+ui_print " Android version: $ANDROID_VER"
+ui_print " Device: $DEVICE_NAME"
+ui_print " Build Date: $BUILD_DATE"
+ui_print " Security Patch: $SECURITY_PATCH"
+ui_print " $ROM_NAME Version: $ROM_VERSION"
+ui_print " Auto-Installer Version: 3.0"
+ui_print " "
+print_line
+aio_progress 0.5 10   # start progress from 0% to 50% in 10 seconds
+ln_print_centered "Verifying files integrity and checks"
+file_checksum
+check_file "images/super.img" 
+nln_print_centered "files Verifications Done"
+print_line
+aio_progress 0.5 0 # set progress to 50% instantly 
+print_centered "Choose installation method:"
+flash_boot_menu
+flash_image "dtbo" "dtbo" 0.03 4
+flash_image "vendor_boot" "vendor_boot" 0.04 3
+flash_image "vbmeta" "vbmeta" 0.05 2
+flash_image "vbmeta_system" "vbmeta_system" 0.06 2
+aio_progress 0.99 100 
+ui_print "    Flashing super image.."
+package_extract_image "images/super.img" "/dev/block/platform/soc/1d84000.ufshc/by-name/super"
+ui_print " "
+ui_print "    Set active boot slot a..."
+change_slot a
+aio_progress 1.0 0  
+ui_print " "
+print_line
+print_centered "This rom built by $ROM_MAINTAINER"
+ui_print " "
+print_centered "Flasher/Installer by ArKT"
+print_line -
+print_centered "Enjoy $ROM_NAME!"
+print_line
+ui_print " "
+rm -rf $UPD_TEMP_FOLDER
+exit
