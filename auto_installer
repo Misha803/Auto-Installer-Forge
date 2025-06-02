@@ -167,6 +167,33 @@ patch_magisk_boot() {
     return 0
 }
 
+# Function to prompt and update a single config field
+update_field() {
+    field="$1"
+    label="$2"
+    line=$(grep "^$field=" "$CONF_FILE")
+
+    value=$(echo "$line" | $BIN_DIR/busybox sed -n "s/^$field=\"\([^\"]*\)\".*/\1/p")
+
+    comment=$(echo "$line" | $BIN_DIR/busybox sed -n "s/^$field=\"[^\"]*\"[[:space:]]*\(.*\)/\1/p")
+
+    echo "Current $label: \"$value\""
+    printf "Enter new $label (leave blank to keep current): "
+    read new_value
+
+    [ -z "$new_value" ] && new_value="$value"
+
+    escaped_new_value=$(printf '%s\n' "$new_value" | $BIN_DIR/busybox sed 's/[&/\]/\\&/g')
+
+    new_line="$field=\"${escaped_new_value}\""
+    [ -n "$comment" ] && new_line="$new_line $comment"
+
+    $BIN_DIR/busybox sed -i "s|^$field=.*|$new_line|" "$CONF_FILE"
+
+    echo "$label updated to: \"$new_value\""
+    echo
+}
+
 echo "\nAutomating ROM conversion for easy Fastboot/Recovery flashing for Xiaomi Pad 5 (more devices planned)\n"
 echo "This script is Written and Made By °⊥⋊ɹ∀°, Telegram - '@ArKT_7', Github - 'ArKT-7'\n"
 
@@ -452,7 +479,7 @@ download_with_fallback \
     "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/autoinstaller.conf" \
     "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/autoinstaller.conf" \
     "$TARGET_DIR/META-INF/autoinstaller.conf" \
-	
+
 download_with_fallback \
     "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/install_forge_linux.sh" \
     "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/install_forge_linux.sh" \
@@ -509,7 +536,7 @@ echo "[INFO] Extracting tee for logging in windows..."
 $BIN_DIR/busybox unzip -q "$TARGET_DIR/bin/windows/tee.zip" -d "$TARGET_DIR/bin/windows/log-tool/"
 log "[SUCCESS] TEE for windows extracted."
 
-log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n[NOTE] Manually Add Patched ksu-n_boot.img, ksu-n_dtbo.img and magisk_boot.img in /images folder\n"
+log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n[NOTE] Manually Add Patched ksu-n_boot.img in /images folder and add options to autoinstaller.conf file\n"
 
 download_with_fallback \
     "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.0.7/KernelSU_Next_v1.0.7_12602-release.apk" \
@@ -523,14 +550,53 @@ download_with_fallback \
     "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/Magisk_v29.0.apk" \
     "Magisk-v29.0.apk"
 
-# Call the function
+# Call the funtion with magisk apk name
 patch_magisk_boot "Magisk_v29.0.apk"
 
+CONF_FILE="$TARGET_DIR/META-INF/autoinstaller.conf"
+IMAGES_DIR="$TARGET_DIR/images"
+
+# Generate the new HASH_PAIRS lines
+tmp_hashes=$(mktemp)
+for img in "$IMAGES_DIR"/*.img; do
+  [ -f "$img" ] || continue
+  name=$(basename "$img")
+
+  # Skip super.img because its a big file, if verify then it will take alot of time
+  [ "$name" = "super.img" ] && continue
+
+  sha1=$($BIN_DIR/busybox sha1sum "$img" | $BIN_DIR/busybox awk '{print $1}')
+  echo "  \"images/$name\" \"$sha1\"" >> "$tmp_hashes"
+done
+
+$BIN_DIR/busybox sed -i '/^HASH_PAIRS=(/,/^)/ {
+  /^HASH_PAIRS=(/!{/^)/!d}
+}' "$CONF_FILE"
+
+# Insert new hashes
+$BIN_DIR/busybox sed -i "/^HASH_PAIRS=(/r $tmp_hashes" "$CONF_FILE"
+
+#echo "[INFO] HASH_PAIRS inside autoinstaller.conf block updated with current img's in images folder"
+
+log "[SUCCESS] Auto-Installer-Forge files processing finished!\n"
+
+log "[INFO] Now, let's update configration file for this rom!\n"
+
+# fields to update 
+update_field "DEVICE_CODE" "DEVICE CODE"
+update_field "ROM_NAME" "ROM name"
+update_field "ROM_MAINTAINER" "ROM maintainer"
+update_field "ANDROID_VER" "Android version"
+update_field "DEVICE_NAME" "Device name"
+update_field "BUILD_DATE" "Build date"
+update_field "SECURITY_PATCH" "Security patch"
+update_field "ROM_VERSION" "ROM Build version"
 
 log "[INFO] Cleaning up..."
-$BIN_DIR/busybox rm -f "$TARGET_DIR/bin/linux/platform-tools-linux.zip" "$TARGET_DIR/bin/windows/platform-tools-windows.zip" "$TARGET_DIR/bin/windows/tee.zip"
+$BIN_DIR/busybox rm -f "$tmp_hashes" "$TARGET_DIR/bin/linux/platform-tools-linux.zip" "$TARGET_DIR/bin/windows/platform-tools-windows.zip" "$TARGET_DIR/bin/windows/tee.zip"
 cd
 rm -rf $BIN_DIR
 echo "[SUCCESS] Cleanup complete."
 
+log "[NOTE] you can also change configrations in META-INF/autoinstaller.conf file anytime!"
 log "[COMPLETED] Auto-Installer-Forge process finished successfully!\n"
