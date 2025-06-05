@@ -607,7 +607,7 @@ Download $flashingtools (Join-Path $targetFolderPath $dirsToCreate[2])
 & "$busyboxPath" rm -f "$(Join-Path $targetFolderPath $dirsToCreate[3])/*.zip"
 nl 2
 lognl "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!" Cyan
-log "[NOTE] Manually Add Patched ksu-n_boot.img in /images folder and add options to autoinstaller.conf file" Yellow
+log "[NOTE] Manually Add Patched ksu-n_boot.img and magisk_boot.img in /images folder and add options to autoinstaller.conf file" Yellow
 Download $rootapkfiles (Join-Path $targetFolderPath $dirsToCreate[5])
 nl 2
 lognl "[SUCCESS] Auto-Installer-Forge files processing finished!" Cyan
