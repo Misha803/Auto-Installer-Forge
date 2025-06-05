@@ -363,6 +363,7 @@ function Rename-InstallerScripts {
             #print "Renamed: $file -> $newName"
         }
     }
+    & "$busyboxPath" dos2unix "$TargetDir/*.sh"
 }
 
 print "`n`nAutomating ROM conversion for easy Fastboot/Recovery flashing for Xiaomi Pad 5 (more devices planned)`n"
@@ -621,6 +622,7 @@ Update-Field $confFile "BUILD_DATE" "Build date"
 Update-Field $confFile "SECURITY_PATCH" "Security patch"
 Update-Field $confFile "ROM_VERSION" "ROM Build version"
 Rename-InstallerScripts $confFile $targetFolderPath
+& "$busyboxPath" dos2unix $confFile 
 
 lognl "[NOTE] you can also change configrations in META-INF/autoinstaller.conf file anytime!`n" Yellow
 print "`n========================================================================" DarkCyan
