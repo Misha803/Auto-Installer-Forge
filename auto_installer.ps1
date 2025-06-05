@@ -537,7 +537,7 @@ foreach ($img in $images) {
 }
 log "[SUCCESS] Cleanup complete." Green
 
-lognl "[INFO] Extracting super.img to final checkusm..." DarkCyan
+lognl "[INFO] Extracting super.img for final checkusm..." DarkCyan
 & "$lpunpack" "$imagesFolderPath/super.img" "$imagesFolderPath"
 if ($LASTEXITCODE -eq 0) {
     log "[SUCCESS] Extraction successful." Green
@@ -622,9 +622,9 @@ Update-Field $confFile "SECURITY_PATCH" "Security patch"
 Update-Field $confFile "ROM_VERSION" "ROM Build version"
 Rename-InstallerScripts $confFile $targetFolderPath
 
-print "`n[NOTE] you can also change configrations in META-INF/autoinstaller.conf file anytime!`n" Yellow
-print "`n==================================================" DarkCyan
-print "Auto-Installer-Forge process finished successfully!" Yellow
-print "===================================================`n" DarkCyan
+lognl "[NOTE] you can also change configrations in META-INF/autoinstaller.conf file anytime!`n" Yellow
+print "`n========================================================================" DarkCyan
+log "[SUCCESS] Auto-Installer-Forge process finished successfully!" Yellow
+print "========================================================================`n" DarkCyan
 Remove-Item -Path $binsDir -Recurse -Force
 exit
