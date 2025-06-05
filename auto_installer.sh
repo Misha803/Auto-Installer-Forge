@@ -141,11 +141,12 @@ patch_magisk_boot() {
     chmod -R +x "$MAGISK_DIR/assets/"
 
     $BIN_DIR/busybox sed -i -e 's/API=$(grep_get_prop ro.build.version.sdk)/API=33/' \
-       -e 's/ABI=$(grep_get_prop ro.product.cpu.abi)/ABI=arm64-v8a/' "$MAGISK_DIR/assets/util_functions.sh"
+       -e 's/ABI=$(grep_get_prop ro.product.cpu.abi)/ABI=x86_64/' "$MAGISK_DIR/assets/util_functions.sh"
 
     # Modify boot_patch.sh to hardcode "sda19" for NABU
-    $BIN_DIR/busybox sed -i '1 s|^.*$|#!/bin/bash|' "$MAGISK_DIR/assets/boot_patch.sh"
-    $BIN_DIR/busybox sed -i 's/ui_print/echo -e/g' "$MAGISK_DIR/assets/boot_patch.sh"
+    #$BIN_DIR/busybox sed -i '1 s|^.*$|#!/bin/bash|' "$MAGISK_DIR/assets/boot_patch.sh"
+    #$BIN_DIR/busybox sed -i 's/ui_print/echo -e/g' "$MAGISK_DIR/assets/boot_patch.sh"
+    echo -e '#!/bin/bash\nBOOTMODE=false\nOUTFD=1\nui_print() { echo -e "$@"; }' | cat - "$MAGISK_DIR/assets/boot_patch.sh" > temp && mv temp "$MAGISK_DIR/assets/boot_patch.sh"
     if ! $BIN_DIR/busybox sed -i 's/\$BOOTMODE && \[ -z "\$PREINITDEVICE" \] && PREINITDEVICE=\$(\.\/magisk --preinit-device)/PREINITDEVICE="sda19"/' "$MAGISK_DIR/assets/boot_patch.sh"; then
         log "[ERROR] Failed to modify boot_patch.sh"
         return 1
