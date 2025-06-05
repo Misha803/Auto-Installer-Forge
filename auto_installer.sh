@@ -140,13 +140,12 @@ patch_magisk_boot() {
 
     chmod -R +x "$MAGISK_DIR/assets/"
 
-    $BIN_DIR/busybox sed -i -e 's/API=$(grep_get_prop ro.build.version.sdk)/API=33/' \
-       -e 's/ABI=$(grep_get_prop ro.product.cpu.abi)/ABI=x86_64/' "$MAGISK_DIR/assets/util_functions.sh"
+    #$BIN_DIR/busybox sed -i -e 's/API=$(grep_get_prop ro.build.version.sdk)/API=33/' \
+    #   -e 's/ABI=$(grep_get_prop ro.product.cpu.abi)/ABI=x86_64/' "$MAGISK_DIR/assets/util_functions.sh"
 
-    # Modify boot_patch.sh to hardcode "sda19" for NABU
     #$BIN_DIR/busybox sed -i '1 s|^.*$|#!/bin/bash|' "$MAGISK_DIR/assets/boot_patch.sh"
     #$BIN_DIR/busybox sed -i 's/ui_print/echo -e/g' "$MAGISK_DIR/assets/boot_patch.sh"
-    echo -e '#!/bin/bash\nBOOTMODE=false\nOUTFD=1\nui_print() { echo -e "$@"; }' | cat - "$MAGISK_DIR/assets/boot_patch.sh" > temp && mv temp "$MAGISK_DIR/assets/boot_patch.sh"
+    # Modify boot_patch.sh to hardcode "sda19" for NABU
     if ! $BIN_DIR/busybox sed -i 's/\$BOOTMODE && \[ -z "\$PREINITDEVICE" \] && PREINITDEVICE=\$(\.\/magisk --preinit-device)/PREINITDEVICE="sda19"/' "$MAGISK_DIR/assets/boot_patch.sh"; then
         log "[ERROR] Failed to modify boot_patch.sh"
         return 1
@@ -562,7 +561,7 @@ echo -e "[INFO] Extracting tee for logging in windows..."
 $BIN_DIR/busybox unzip -q "$TARGET_DIR/bin/windows/tee.zip" -d "$TARGET_DIR/bin/windows/log-tool/"
 log "[SUCCESS] TEE for windows extracted."
 
-log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n[NOTE] Manually Add Patched ksu-n_boot.img in /images folder and add options to autoinstaller.conf file\n"
+log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n[NOTE] Manually Add Patched ksu-n_boot.img and magisk_boot.img in /images folder and add options to autoinstaller.conf file\n"
 
 download_with_fallback \
     "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.0.7/KernelSU_Next_v1.0.7_12602-release.apk" \
@@ -577,7 +576,7 @@ download_with_fallback \
     "Magisk-v29.0.apk"
 
 # Call the funtion with magisk apk name
-patch_magisk_boot "Magisk_v29.0.apk"
+#patch_magisk_boot "Magisk_v29.0.apk"
 
 CONF_FILE="$TARGET_DIR/META-INF/autoinstaller.conf"
 IMAGES_DIR="$TARGET_DIR/images"
