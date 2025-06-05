@@ -69,9 +69,6 @@ foreach ($dir in @($binsDir, $autoinstallerDir)) {
     }
 }
 
-#$autoinstallerfiles = @{
-#}
-
 $requiredtools = @{
     "busybox.exe" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/bin/windows_amd64/busybox.exe"
     "payload-dump.exe" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/bin/windows_amd64/payload-dumper-go.exe"
@@ -81,6 +78,42 @@ $requiredtools = @{
     "cygwin1.dll" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/bin/windows_amd64/cygwin1.dll"
     "checksum.arkt" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main//bin/checksum.arkt"
 }
+
+
+$flashingtools = @{
+    "platform-tools-latest-windows.zip" = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+    "platform-tools-latest-linux.zip" = "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+    "tee-win32.2023-11-27.zip" = "https://github.com/dEajL3kA/tee-win32/releases/download/1.3.3/tee-win32.2023-11-27.zip"
+}
+
+$rootapkfiles = @{
+    "KernelSU_Next_v1.0.7.apk" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/files/KernelSU_Next_v1.0.7.apk"
+    "Magisk_v29.0.apk" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/files/Magisk-v29.0.apk"
+}
+
+$autoinstallerfiles = @{
+    "userdata.img" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/files/userdata.img"
+    "update-binary" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/update-binary"
+    "updater-script" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/updater-script"
+    "bootctl" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/bootctl"
+    "busybox" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/busybox"
+    "libhidltransport.so" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/libhidltransport.so"
+    "libhwbinder.so" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/libhwbinder.so"
+    "autoinstaller.conf" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/autoinstaller.conf"
+    "install_forge_linux.sh" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/install_forge_linux.sh"
+    "install_forge_windows.bat" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/install_forge_windows.bat"
+    "update_forge_linux.sh" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/update_forge_linux.sh"
+    "update_forge_windows.bat" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/update_forge_windows.bat"
+}
+
+$dirsToCreate = @(
+    "META-INF/com/google/android",
+    "META-INF/com/arkt",
+    "bin/windows",
+    "bin/windows/log-tool",
+    "bin/linux",
+    "ROOT_APK_INSATLL_THIS_ONLY"
+)
 
 function Show-Progress {
     param (
@@ -112,10 +145,10 @@ function Show-Progress {
         $progbar = $progbar.PadRight($BarSize,[char]9617)
         
         if (!$Complete.IsPresent) {
-            Write-Host -NoNewLine "`r$ProgressText $progbar [ $($CurrentValue.ToString("#.###").PadLeft($TotalValue.ToString("#.###").Length))$ValueSuffix / $($TotalValue.ToString("#.###"))$ValueSuffix ] $($percentComplete.ToString("##0.00").PadLeft(6)) % complete"
+            Write-Host -NoNewLine "`r$ProgressText $progbar [ $($CurrentValue.ToString("#.###").PadLeft($TotalValue.ToString("#.###").Length))$ValueSuffix ] $($percentComplete.ToString("##0.00").PadLeft(6)) %"
         }
         else {
-            Write-Host -NoNewLine "`r$ProgressText $progbar [ $($TotalValue.ToString("#.###").PadLeft($TotalValue.ToString("#.###").Length))$ValueSuffix / $($TotalValue.ToString("#.###"))$ValueSuffix ] $($percentComplete.ToString("##0.00").PadLeft(6)) % complete"                    
+            Write-Host -NoNewLine "`r$ProgressText $progbar [ $($TotalValue.ToString("#.###").PadLeft($TotalValue.ToString("#.###").Length))$ValueSuffix ] $($percentComplete.ToString("##0.00").PadLeft(6)) %"                    
         }                
     }   
 }
@@ -346,9 +379,7 @@ if ($LASTEXITCODE -eq 0) {
 lognl "[INFO] Generating original checksums..." DarkCyan
 $images = @("system", "vendor", "odm", "system_ext", "product")
 foreach ($img in $images) {
-    $srcImgPath = Join-Path $imagesFolderPath "$img.img"
-    $destImgPath = Join-Path $imagesFolderPath "${img}_a.img"
-    & "$busyboxPath" mv "$srcImgPath" "$destImgPath"
+    & "$busyboxPath" mv "$imagesFolderPath/$img.img" "$imagesFolderPath/${img}_a.img"
 }
 
 & "$busyboxPath" sha256sum `
@@ -367,7 +398,7 @@ $l3 = (Get-Item "$imagesFolderPath/system_a.img").Length
 $l4 = (Get-Item "$imagesFolderPath/system_ext_a.img").Length
 $l5 = (Get-Item "$imagesFolderPath/vendor_a.img").Length
 $totalSize = $l1 + $l2 + $l3 + $l4 + $l5 + 25165824
-log "[INFO] Total size (with buffer): $totalSize" Green
+log "[INFO] Total size (with buffer): $totalSize bytes" Green
 
 lognl "[INFO] Creating super.img...`n" DarkCyan
 & "$lpmake" `
@@ -392,7 +423,7 @@ lognl "[INFO] Creating super.img...`n" DarkCyan
 lognl "[SUCCESS] super.img created." Green
 
 lognl "[INFO] Truncating super.img..." DarkCyan
-& "$busyboxPath" truncate -s "$totalSize" "$imagesFolderPath/super.img"
+& "$busyboxPath" truncate -s "$totalSize" "$imagesFolderPath/super.img" 
 if ($LASTEXITCODE -eq 0) {
     log "[SUCCESS] Truncation successful." Green
 } else {
@@ -402,7 +433,7 @@ if ($LASTEXITCODE -eq 0) {
 lognl "[INFO] Cleaning up payload.bin extrated img's..." DarkCyan
 $images = @("system", "vendor", "odm", "system_ext", "product")
 foreach ($img in $images) {
-    & "$busyboxPath" rm -f (Join-Path $imagesFolderPath "${img}_a.img")
+    & "$busyboxPath" rm -f "$imagesFolderPath/${img}_a.img"
 }
 log "[SUCCESS] Cleanup complete." Green
 
@@ -424,12 +455,6 @@ lognl "[INFO] Generating new checksums..." DarkCyan
     > "$imagesFolderPath/new_checksums.txt"
 log "[SUCCESS] Checksums generated." Green
 
-$images = @("system", "vendor", "odm", "system_ext", "product")
-foreach ($img in $images) {
-    & "$busyboxPath" rm -f (Join-Path $imagesFolderPath "${img}_a.img")
-    & "$busyboxPath" rm -f (Join-Path $imagesFolderPath "${img}_b.img")
-}
-
 lognl "[INFO] Comparing checksums..." DarkCyan
 & "$busyboxPath" diff "$imagesFolderPath/original_checksums.txt" "$imagesFolderPath/new_checksums.txt"
 if ($LASTEXITCODE -eq 0) {
@@ -438,12 +463,54 @@ if ($LASTEXITCODE -eq 0) {
     log "[ERROR] cheksum failed." Red
 }
 
-print "`n===========================================" DarkCyan
+lognl "[COMPLETED] super.img prepared to use in fastboot/recovery!" Yellow
+
+lognl "[INFO] Cleaning up..." DarkCyan
+$images = @("system", "vendor", "odm", "system_ext", "product")
+foreach ($img in $images) {
+    & "$busyboxPath" rm -f "$imagesFolderPath/${img}_a.img"
+    & "$busyboxPath" rm -f "$imagesFolderPath/${img}_b.img"
+}
+& "$busyboxPath" rm -f "$targetFolderPath/payload.bin" "$imagesFolderPath/original_checksums.txt" "$imagesFolderPath/new_checksums.txt"
+log "[SUCCESS] Cleanup complete.`n" Green
+
+lognl "[INFO] Now will construct folder/files and Download Scripts as required for Auto Installer!" Yellow
+foreach ($dir in $dirsToCreate) {
+    $fullPath = Join-Path $targetFolderPath $dir
+    & "$busyboxPath" mkdir -p "$fullPath"
+}
+Download $autoinstallerfiles $targetFolderPath
+
+& "$busyboxPath" mv "$targetFolderPath/autoinstaller.conf" "$targetFolderPath/bin"
+& "$busyboxPath" mv "$targetFolderPath/userdata.img" "$imagesFolderPath"
+$files = @("update-binary", "updater-script")
+foreach ($file in $files) {
+    & "$busyboxPath" mv "$targetFolderPath/$file" "$(Join-Path $targetFolderPath $dirsToCreate[0])"
+}
+$files = @("bootctl", "busybox", "libhidltransport.so", "libhwbinder.so")
+foreach ($file in $files) {
+    & "$busyboxPath" mv "$targetFolderPath/$file" "$(Join-Path $targetFolderPath $dirsToCreate[1])"
+}
+
+nl 2
+lognl "[INFO] Downloading Platform-tools and required tools for Auto-Installer-Forge script..." Cyan
+Download $flashingtools (Join-Path $targetFolderPath $dirsToCreate[2])
+& "$busyboxPath" mv "$(Join-Path $targetFolderPath $dirsToCreate[2])/platform-tools-latest-linux.zip" "$(Join-Path $targetFolderPath $dirsToCreate[4])"
+& "$busyboxPath" mv "$(Join-Path $targetFolderPath $dirsToCreate[2])/tee-win32.2023-11-27.zip" "$(Join-Path $targetFolderPath $dirsToCreate[3])"
+& "$busyboxPath" unzip -q "$(Join-Path $targetFolderPath $dirsToCreate[2])/*.zip" -d "$(Join-Path $targetFolderPath $dirsToCreate[2])" | Out-Null
+& "$busyboxPath" unzip -q "$(Join-Path $targetFolderPath $dirsToCreate[4])/*.zip" -d "$(Join-Path $targetFolderPath $dirsToCreate[4])" | Out-Null
+& "$busyboxPath" unzip -q "$(Join-Path $targetFolderPath $dirsToCreate[3])/*.zip" -d "$(Join-Path $targetFolderPath $dirsToCreate[3])" | Out-Null
+& "$busyboxPath" rm -f "$(Join-Path $targetFolderPath $dirsToCreate[2])/*.zip"
+& "$busyboxPath" rm -f "$(Join-Path $targetFolderPath $dirsToCreate[4])/*.zip"
+& "$busyboxPath" rm -f "$(Join-Path $targetFolderPath $dirsToCreate[3])/*.zip"
+nl 2
+lognl "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!" Cyan
+log "[NOTE] Manually Add Patched ksu-n_boot.img in /images folder and add options to autoinstaller.conf file" Yellow
+Download $rootapkfiles (Join-Path $targetFolderPath $dirsToCreate[5])
+
+print "`n`n`n===========================================" DarkCyan
 print "Autoinstaller process completed successfully!" Yellow
 print "===========================================`n" DarkCyan
-
-#cleanup
-& "$busyboxPath" rm -f "$targetFolderPath/payload.bin" "$imagesFolderPath/original_checksums.txt" "$imagesFolderPath/new_checksums.txt"
 Remove-Item -Path $binsDir -Recurse -Force
 
 exit
