@@ -616,7 +616,7 @@ nl 2
 lognl "[SUCCESS] Auto-Installer-Forge files processing finished!" Cyan
 log "[INFO] Now, let's update configration file for this rom!`n`n"Yellow
 Update-HashPairs $confFile $imagesFolderPath
-Update-Field $confFile "DEVICE_CODE" "Device code"
+#Update-Field $confFile "DEVICE_CODE" "Device code"
 Update-Field $confFile "ROM_NAME" "ROM name"
 Update-Field $confFile "ROM_MAINTAINER" "ROM maintainer"
 Update-Field $confFile "ANDROID_VER" "Android version"

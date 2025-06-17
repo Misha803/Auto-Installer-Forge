@@ -608,7 +608,7 @@ log "[SUCCESS] Auto-Installer-Forge files processing finished!\n"
 log "[INFO] Now, let's update configration file for this rom!\n"
 
 # fields to update 
-update_field "DEVICE_CODE" "DEVICE CODE"
+#update_field "DEVICE_CODE" "DEVICE CODE"
 update_field "ROM_NAME" "ROM name"
 update_field "ROM_MAINTAINER" "ROM maintainer"
 update_field "ANDROID_VER" "Android version"
