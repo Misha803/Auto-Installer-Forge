@@ -363,7 +363,10 @@ function Rename-InstallerScripts {
             #print "Renamed: $file -> $newName"
         }
     }
-    & "$busyboxPath" dos2unix "$TargetDir/*.sh"
+    # Only convert .sh files to Unix format
+    Get-ChildItem -Path $TargetDir -Filter "*.sh" | ForEach-Object {
+        & "$busyboxPath" dos2unix $_.FullName
+    }
 }
 
 print "`n`nAutomating ROM conversion for easy Fastboot/Recovery flashing for Xiaomi Pad 5 (more devices planned)`n"

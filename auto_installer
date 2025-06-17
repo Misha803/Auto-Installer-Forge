@@ -613,8 +613,13 @@ for base in install_forge_linux.sh update_forge_linux.sh install_forge_windows.b
     $BIN_DIR/busybox mv "$src" "$TARGET_DIR/$new_name"
     #echo "Renamed: $base → $new_name"
   fi
-  $BIN_DIR/busybox dos2unix $TARGET_DIR/*.sh
 done
+
+# Only convert .sh files once, after renaming
+for shfile in "$TARGET_DIR"/*.sh; do
+  [ -f "$shfile" ] && $BIN_DIR/busybox dos2unix "$shfile"
+done
+
 $BIN_DIR/busybox dos2unix "$CONF_FILE"
 log "[INFO] Cleaning up..."
 $BIN_DIR/busybox rm -f "$tmp_hashes" "$TARGET_DIR/bin/linux/platform-tools-linux.zip" "$TARGET_DIR/bin/windows/platform-tools-windows.zip" "$TARGET_DIR/bin/windows/tee.zip"
