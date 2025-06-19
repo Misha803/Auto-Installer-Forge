@@ -7,7 +7,7 @@ An automated tool that processes ROMs containing **payload.bin**, converts them 
 su -c "cd / && mkdir -p /tmp/Auto-Installer-Forge && cd /tmp/Auto-Installer-Forge && curl -sSL -o auto_installer https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto_installer && chmod 777 auto_installer && su -c ./auto_installer"
 ```
 
-## WIP for linux and windows pc
+### Linux and Windows screen not yet supports Auto magisk boot patching 
 
 #### For Linux Test run - copy and paste in Terminal of your Linux pc
 ```shell
