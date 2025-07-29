@@ -5,7 +5,7 @@
 ::
 @echo off
 setlocal enabledelayedexpansion
-title Auto Installer 3.0
+title Auto Installer 3.1
 cd %~dp0
 
 for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
@@ -15,7 +15,7 @@ set GREEN=%ESC%[92m
 set RESET=%ESC%[0m
 
 set ROM_MAINTAINER=P.A.N.Z.
-set required_files=boot.img dtbo.img ksu-n_boot.img ksu-n_dtbo.img magisk_boot.img super.img userdata.img vbmeta.img vbmeta_system.img vendor_boot.img
+set required_files=boot.img dtbo.img ksu-n_boot.img magisk_boot.img super.img userdata.img vbmeta.img vbmeta_system.img vendor_boot.img
 
 CALL :print_ascii
 if not exist "images" (
@@ -215,7 +215,7 @@ call :log "%YELLOW%Choose installation method:%RESET%"
 echo.
 echo %YELLOW%1.%RESET% With root (KSU-N - Kernel SU NEXT)
 echo %YELLOW%2.%RESET% Without root
-echo %YELLOW%3.%RESET% With root (Magisk 29.0)
+echo %YELLOW%3.%RESET% With root (Magisk v29.0)
 echo %YELLOW%4.%RESET% Cancel Flashing ROM 
 echo.
 set /p install_choice=Enter option (1, 2, 3 or 4): 
@@ -233,11 +233,11 @@ cls
 CALL :print_ascii
 CALL :print_note
 echo.
-call :log "%YELLOW%Starting installation with KSU...%RESET%"
+call :log "%YELLOW%Starting installation with KSU-NEXT...%RESET%"
 %fastboot% set_active a 2>&1 | %tee% -a "%log_file%"
 echo.
 CALL :FlashPartition boot ksu-n_boot.img
-CALL :FlashPartition dtbo ksu-n_dtbo.img
+CALL :FlashPartition dtbo dtbo.img
 goto common_flash
 :install_no_root
 cls

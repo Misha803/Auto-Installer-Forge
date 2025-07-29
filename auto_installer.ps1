@@ -99,6 +99,9 @@ $autoinstallerfiles = @{
     "busybox" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/busybox"
     "libhidltransport.so" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/libhidltransport.so"
     "libhwbinder.so" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/libhwbinder.so"
+    "dmsetup" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/dmsetup"
+    "mke2fs" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/mke2fs"
+    "make_f2fs" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/bin/make_f2fs"
     "autoinstaller.conf" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/autoinstaller.conf"
     "install_forge_linux.sh" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/install_forge_linux.sh"
     "install_forge_windows.bat" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/auto-installer-scripts/install_forge_windows.bat"
@@ -597,7 +600,7 @@ $files = @("update-binary", "updater-script")
 foreach ($file in $files) {
     & "$busyboxPath" mv "$targetFolderPath/$file" "$(Join-Path $targetFolderPath $dirsToCreate[0])"
 }
-$files = @("bootctl", "busybox", "libhidltransport.so", "libhwbinder.so")
+$files = @("bootctl", "busybox", "libhidltransport.so", "libhwbinder.so", "dmsetup", "make_f2fs", "mke2fs")
 foreach ($file in $files) {
     & "$busyboxPath" mv "$targetFolderPath/$file" "$(Join-Path $targetFolderPath $dirsToCreate[1])"
 }

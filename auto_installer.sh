@@ -489,6 +489,24 @@ download_with_fallback \
     "libhwbinder.so"
 
 download_with_fallback \
+    "$BASE_URL/auto-installer-scripts/bin/dmsetup" \
+    "$BASE_URL/auto-installer-scripts/bin/dmsetup" \
+    "$TARGET_DIR/META-INF/com/arkt/dmsetup" \
+    "dmsetup"
+	
+download_with_fallback \
+    "$BASE_URL/auto-installer-scripts/bin/make_f2fs" \
+    "$BASE_URL/auto-installer-scripts/bin/make_f2fs" \
+    "$TARGET_DIR/META-INF/com/arkt/make_f2fs" \
+    "make_f2fs"
+	
+download_with_fallback \
+    "$BASE_URL/auto-installer-scripts/bin/mke2fs" \
+    "$BASE_URL/auto-installer-scripts/bin/mke2fs" \
+    "$TARGET_DIR/META-INF/com/arkt/mke2fs" \
+    "mke2fs"
+
+download_with_fallback \
     "$BASE_URL/auto-installer-scripts/update-binary" \
     "$BASE_URL/auto-installer-scripts/update-binary" \
     "$TARGET_DIR/META-INF/com/google/android/update-binary" \

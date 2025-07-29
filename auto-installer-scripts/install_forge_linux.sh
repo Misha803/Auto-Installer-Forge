@@ -13,7 +13,7 @@ GREEN="${ESC}[92m"
 RESET="${ESC}[0m"
 
 ROM_MAINTAINER="P.A.N.Z."
-required_files=("boot.img" "dtbo.img" "ksu-n_boot.img" "ksu-n_dtbo.img" "magisk_boot.img" "super.img" "userdata.img" "vbmeta.img" "vbmeta_system.img" "vendor_boot.img")
+required_files=("boot.img" "dtbo.img" "ksu-n_boot.img" "magisk_boot.img" "super.img" "userdata.img" "vbmeta.img" "vbmeta_system.img" "vendor_boot.img")
 
 print_ascii() {
     echo
@@ -61,7 +61,7 @@ FlashPartition() {
     echo
 }
 platform_tools_url="https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
-platform_tools_zip="bin/linux/platform-tools.zip"
+platform_tools_zip="bin/platform-tools.zip"
 extract_folder="bin/linux/"
 check_flag="bin/download.flag"
 download_dependencies() {
@@ -203,7 +203,7 @@ while true; do
     echo
     echo -e "${YELLOW}1.${RESET} With root (KSU-N - Kernel SU NEXT)"
     echo -e "${YELLOW}2.${RESET} Without root"
-    echo -e "${YELLOW}3.${RESET} With root (Magisk 29.0)"
+    echo -e "${YELLOW}3.${RESET} With root (Magisk v29.0)"
     echo -e "${YELLOW}4.${RESET} Cancel Flashing ROM"
     echo
     read -p "Enter option (1, 2, 3 or 4): " install_choice
@@ -218,11 +218,11 @@ while true; do
             print_ascii
             print_note
             echo
-            echo -e "${YELLOW}Starting installation with KSU...${RESET}" | tee -a "$log_file"
+            echo -e "${YELLOW}Starting installation with KSU-NEXT...${RESET}" | tee -a "$log_file"
             $fastboot set_active a  2>&1 | tee -a "$log_file"
 			echo
             FlashPartition boot ksu-n_boot.img
-            FlashPartition dtbo ksu-n_dtbo.img
+            FlashPartition dtbo dtbo.img
             break
             ;;
         2)
