@@ -338,5 +338,12 @@ call :log "%YELLOW%Flashing %partition%%RESET%"
 echo.
 exit /b 1
 :log
-echo %~1 | %tee% -a "%log_file%"
+set "orig=%~1"
+set "line=%~1"
+set "line=!line:[91m=!"
+set "line=!line:[92m=!"
+set "line=!line:[93m=!"
+set "line=!line:[0m=!"
+echo %orig%
+echo !line! >> "%log_file%"
 goto :eof
