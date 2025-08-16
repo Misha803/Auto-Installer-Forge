@@ -81,7 +81,7 @@ $requiredtools = @{
 
 
 $flashingtools = @{
-    "platform-tools-latest-windows.zip" = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+    "platform-tools-latest-windows.zip" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/files/platform-tools-latest-windows.zip"
     "platform-tools-latest-linux.zip" = "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
     "tee-win32.2023-11-27.zip" = "https://github.com/dEajL3kA/tee-win32/releases/download/1.3.3/tee-win32.2023-11-27.zip"
 }
