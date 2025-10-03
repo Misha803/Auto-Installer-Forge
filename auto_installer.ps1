@@ -511,17 +511,17 @@ $l2 = (Get-Item "$imagesFolderPath/product_a.img").Length
 $l3 = (Get-Item "$imagesFolderPath/system_a.img").Length
 $l4 = (Get-Item "$imagesFolderPath/system_ext_a.img").Length
 $l5 = (Get-Item "$imagesFolderPath/vendor_a.img").Length
-$totalSize = $l1 + $l2 + $l3 + $l4 + $l5 + 25165824
+$totalSize = $l1 + $l2 + $l3 + $l4 + $l5 + 12582912
 log "[INFO] Total size (with buffer): $totalSize bytes" Green
 
 lognl "[INFO] Creating super.img...`n" DarkCyan
 & "$lpmake" `
   --metadata-size 65536 `
   --metadata-slots 3 `
-  --device super:9126805504 `
+  --device super:$totalSize `
   --super-name super `
-  --group super_group_a:9126805504 `
-  --group super_group_b:9126805504 `
+  --group super_group_a:$totalSize `
+  --group super_group_b:$totalSize `
   --partition odm_a:readonly:"$l1":super_group_a --image odm_a="$imagesFolderPath/odm_a.img" `
   --partition odm_b:readonly:0:super_group_b `
   --partition product_a:readonly:"$l2":super_group_a --image product_a="$imagesFolderPath/product_a.img" `
@@ -536,13 +536,13 @@ lognl "[INFO] Creating super.img...`n" DarkCyan
   --output "$imagesFolderPath/super.img"
 lognl "[SUCCESS] super.img created." Green
 
-lognl "[INFO] Truncating super.img..." DarkCyan
-& "$busyboxPath" truncate -s "$totalSize" "$imagesFolderPath/super.img" 
-if ($LASTEXITCODE -eq 0) {
-    log "[SUCCESS] Truncation successful." Green
-} else {
-    log "[ERROR] Truncation failed." Red
-}
+# lognl "[INFO] Truncating super.img..." DarkCyan
+# & "$busyboxPath" truncate -s "$totalSize" "$imagesFolderPath/super.img" 
+# if ($LASTEXITCODE -eq 0) {
+#     log "[SUCCESS] Truncation successful." Green
+# } else {
+#     log "[ERROR] Truncation failed." Red
+# }
 
 lognl "[INFO] Cleaning up payload.bin extrated img's..." DarkCyan
 $images = @("system", "vendor", "odm", "system_ext", "product")

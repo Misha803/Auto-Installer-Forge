@@ -385,7 +385,7 @@ $BIN_DIR/busybox sha256sum "$TARGET_DIR/system_a.img" "$TARGET_DIR/vendor_a.img"
 echo -e "[SUCCESS] Checksums generated."
 
 log "[INFO] Calculating total partition size with buffer..."
-TOTAL_SIZE=$($BIN_DIR/busybox du -b "$TARGET_DIR/system_a.img" "$TARGET_DIR/vendor_a.img" "$TARGET_DIR/odm_a.img" "$TARGET_DIR/system_ext_a.img" "$TARGET_DIR/product_a.img" | $BIN_DIR/busybox awk '{sum += $1} END {print sum + (24 * 1024 * 1024); exit}')
+TOTAL_SIZE=$($BIN_DIR/busybox du -b "$TARGET_DIR/system_a.img" "$TARGET_DIR/vendor_a.img" "$TARGET_DIR/odm_a.img" "$TARGET_DIR/system_ext_a.img" "$TARGET_DIR/product_a.img" | $BIN_DIR/busybox awk '{sum += $1} END {print sum + (12 * 1024 * 1024); exit}')
 echo -e "Total size (with buffer): $TOTAL_SIZE"
 
 log "[INFO] Creating super.img..."
@@ -393,10 +393,10 @@ echo -e ""
 $BIN_DIR/lpmake \
 --metadata-size 65536 \
 --metadata-slots 3 \
---device super:9126805504 \
+--device super:$TOTAL_SIZE \
 --super-name super \
---group super_group_a:9126805504 \
---group super_group_b:9126805504 \
+--group super_group_a:$TOTAL_SIZE \
+--group super_group_b:$TOTAL_SIZE \
 --partition odm_a:readonly:$(wc -c <"$TARGET_DIR/odm_a.img"):super_group_a --image odm_a="$TARGET_DIR/odm_a.img" \
 --partition odm_b:readonly:0:super_group_b \
 --partition product_a:readonly:$(wc -c <"$TARGET_DIR/product_a.img"):super_group_a --image product_a="$TARGET_DIR/product_a.img" \
@@ -412,9 +412,9 @@ $BIN_DIR/lpmake \
 
 log "[SUCCESS] super.img created."
 
-log "[INFO] Truncating super.img..."
-$BIN_DIR/busybox truncate -s "$TOTAL_SIZE" "$TARGET_DIR/super.img"
-echo -e "[SUCCESS] Truncation complete."
+# log "[INFO] Truncating super.img..."
+# $BIN_DIR/busybox truncate -s "$TOTAL_SIZE" "$TARGET_DIR/super.img"
+# echo -e "[SUCCESS] Truncation complete."
 
 log "[INFO] Cleaning up payload.bin extrated img's..."
 $BIN_DIR/busybox rm -f "$TARGET_DIR/system_a.img" "$TARGET_DIR/vendor_a.img" "$TARGET_DIR/odm_a.img" "$TARGET_DIR/system_ext_a.img" "$TARGET_DIR/product_a.img" "$PAYLOAD_FILE" 
