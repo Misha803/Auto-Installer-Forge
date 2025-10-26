@@ -87,7 +87,7 @@ $flashingtools = @{
 }
 
 $rootapkfiles = @{
-    "KernelSU_Next_v1.0.8.apk" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/files/KernelSU_Next_v1.0.8.apk"
+    "KernelSU_Next_v1.1.1.apk" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/files/KernelSU_Next_v1.1.1.apk"
     "Magisk_v29.0.apk" = "https://raw.githubusercontent.com/arkt-7/Auto-Installer-Forge/main/files/Magisk-v29.0.apk"
 }
 

@@ -11,13 +11,20 @@ URL_PAYLOAD_DUMPER="$BASE_URL/bin/linux_amd64/payload-dumper-go"
 URL_LPMAKE="$BASE_URL/bin/linux_amd64/lpmake"
 URL_LPUNPACK="$BASE_URL/bin/linux_amd64/lpunpack"
 
-BIN_DIR="$HOME/Auto-Installer-Forge/bin"
-WORK_DIR="$HOME/Auto-Installer-Forge/out"
-MAGISK_DIR="$BIN_DIR/magisk_patch"
-
-#mkdir -p "$BIN_DIR"
-mkdir -p "$MAGISK_DIR"
-mkdir -p "$WORK_DIR"
+current_dir=$(basename "$PWD")
+if [ "$current_dir" = "Auto-Installer-Forge" ]; then
+  BIN_DIR="$PWD/bin"
+  WORK_DIR="$PWD/out"
+  MAGISK_DIR="$BIN_DIR/magisk_patch"
+else
+  BIN_DIR="$PWD/Auto-Installer-Forge/bin"
+  WORK_DIR="$PWD/Auto-Installer-Forge/out"
+  MAGISK_DIR="$BIN_DIR/magisk_patch"
+fi
+mkdir -p "$WORK_DIR" "$MAGISK_DIR"
+# echo "BIN_DIR=$BIN_DIR"
+# echo "WORK_DIR=$WORK_DIR"
+# echo "MAGISK_DIR=$MAGISK_DIR"
 
 log() {
     echo -e -e "\n[$(date +"%H:%M:%S")] $1"
@@ -124,8 +131,7 @@ patch_magisk_boot() {
         return 1
     fi
 
-    ARCH_DIR="x86_64"
-
+    ARCH_DIR="arm64-v8a"
     LIB_PATH="$MAGISK_DIR/lib/$ARCH_DIR"
     if [ -d "$LIB_PATH" ]; then
         for file in "$LIB_PATH"/*.so; do
@@ -137,14 +143,41 @@ patch_magisk_boot() {
         log "[ERROR] Library folder not found for $ARCH_DIR"
         return 1
     fi
-
+    ARCH_DIR="x86_64"
+    LIB_PATH="$MAGISK_DIR/lib/$ARCH_DIR"
+    if [ -d "$LIB_PATH" ]; then
+        for file in "$LIB_PATH"/lib{magiskboot,busybox}.so; do
+            [ -f "$file" ] || continue
+            new_name=$(basename "$file" | $BIN_DIR/busybox sed -E 's/^lib(.*)\.so$/\1/')
+            mv "$file" "$MAGISK_DIR/assets/$new_name"
+        done
+    else
+        log "[ERROR] Library folder not found for $ARCH_DIR"
+        return 1
+    fi
     chmod -R +x "$MAGISK_DIR/assets/"
 
-    #$BIN_DIR/busybox sed -i -e 's/API=$(grep_get_prop ro.build.version.sdk)/API=33/' \
-    #   -e 's/ABI=$(grep_get_prop ro.product.cpu.abi)/ABI=x86_64/' "$MAGISK_DIR/assets/util_functions.sh"
+    # Extract API version
+    sdk_version=$(strings "$TARGET_DIR/images/super.img" | grep -m 1 'ro.build.version.sdk=' | cut -d'=' -f2)
+    if [ -z "$sdk_version" ]; then
+    sdk_version=36
+    fi
+    echo "API level is: $sdk_version"
+    # Extract ABI version
+    # abi_version=$(strings "$TARGET_DIR/images/super.img" | grep -m 1 'ro.product.cpu.abi=' | cut -d'=' -f2)
+    # if [ -z "$abi_version" ]; then
+    abi_version=arm64-v8a
+    # fi
+    # echo "API level is: $abi_version"
 
-    #$BIN_DIR/busybox sed -i '1 s|^.*$|#!/bin/bash|' "$MAGISK_DIR/assets/boot_patch.sh"
-    #$BIN_DIR/busybox sed -i 's/ui_print/echo -e/g' "$MAGISK_DIR/assets/boot_patch.sh"
+    $BIN_DIR/busybox sed -i \
+    -e "s|API=\$(grep_get_prop ro.build.version.sdk)|API=$sdk_version|" \
+    -e "s|ABI=\$(grep_get_prop ro.product.cpu.abi)|ABI=$abi_version|" \
+    "$MAGISK_DIR/assets/util_functions.sh"
+
+    $BIN_DIR/busybox sed -i 's|echo -e "ui_print \$1\\nui_print" >> /proc/self/fd/\$OUTFD|echo -e "\$1"|' "$MAGISK_DIR/assets/util_functions.sh"
+    $BIN_DIR/busybox sed -i '1 s|^.*$|#!/bin/bash|' "$MAGISK_DIR/assets/boot_patch.sh"
+    $BIN_DIR/busybox sed -i 's/ui_print/echo -e/g' "$MAGISK_DIR/assets/boot_patch.sh"
     # Modify boot_patch.sh to hardcode "sda19" for NABU
     if ! $BIN_DIR/busybox sed -i 's/\$BOOTMODE && \[ -z "\$PREINITDEVICE" \] && PREINITDEVICE=\$(\.\/magisk --preinit-device)/PREINITDEVICE="sda19"/' "$MAGISK_DIR/assets/boot_patch.sh"; then
         log "[ERROR] Failed to modify boot_patch.sh"
@@ -594,10 +627,10 @@ log "[SUCCESS] TEE for windows extracted."
 log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n[NOTE] Manually Add Patched ksu-n_boot.img and magisk_boot.img in /images folder and add options to autoinstaller.conf file\n"
 
 download_with_fallback \
-    "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.0.8/KernelSU_Next_v1.0.8_12701-release.apk" \
-    "$BASE_URL/files/KernelSU_Next_v1.0.8.apk" \
-    "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.0.8.apk" \
-    "KernelSU_Next_v1.0.8.apk"
+    "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.1.1/KernelSU_Next_v1.1.1_12851-release.apk" \
+    "$BASE_URL/files/KernelSU_Next_v1.1.1.apk" \
+    "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.1.1.apk" \
+    "KernelSU_Next_v1.1.1.apk"
 
 download_with_fallback \
     "https://github.com/topjohnwu/Magisk/releases/download/v29.0/Magisk-v29.0.apk" \
@@ -606,7 +639,7 @@ download_with_fallback \
     "Magisk-v29.0.apk"
 
 # Call the funtion with magisk apk name
-#patch_magisk_boot "Magisk_v29.0.apk"
+patch_magisk_boot "Magisk_v29.0.apk"
 
 CONF_FILE="$TARGET_DIR/META-INF/autoinstaller.conf"
 IMAGES_DIR="$TARGET_DIR/images"
