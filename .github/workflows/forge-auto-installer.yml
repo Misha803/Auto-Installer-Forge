@@ -33,7 +33,7 @@ on:
         required: true
         default: '01 Nov 2025'
       rom_version:
-        description: 'ROM version/build identifier'
+        description: 'build identifier/ROM version'
         required: true
         default: 'v16.0-20251107-nabu-UNOFFICIAL-Stable'
 

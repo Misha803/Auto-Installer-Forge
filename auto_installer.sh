@@ -689,13 +689,17 @@ log "[INFO] Now, let's update configration file for this rom!\n"
 
 # fields to update 
 #update_field "DEVICE_CODE" "DEVICE CODE"
-update_field "ROM_NAME" "ROM name"
-update_field "ROM_MAINTAINER" "ROM maintainer"
-update_field "ANDROID_VER" "Android version"
-update_field "DEVICE_NAME" "Device name"
-update_field "BUILD_DATE" "Build date"
-update_field "SECURITY_PATCH" "Security patch"
-update_field "ROM_VERSION" "ROM Build version"
+if [ -n "$2" ] && [ -f "$2" ]; then
+    log "[INFO] using config from $2"
+else
+	update_field "ROM_NAME" "ROM name"
+	update_field "ROM_MAINTAINER" "ROM maintainer"
+	update_field "ANDROID_VER" "Android version"
+	update_field "DEVICE_NAME" "Device name"
+	update_field "BUILD_DATE" "Build date"
+	update_field "SECURITY_PATCH" "Security patch"
+	update_field "ROM_VERSION" "ROM Build version"
+fi
 
 # Extract ROM_NAME line from config
 line=$(grep "^ROM_NAME=" "$CONF_FILE")
