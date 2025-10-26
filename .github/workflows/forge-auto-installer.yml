@@ -6,6 +6,36 @@ on:
       rom_zip_url:
         description: 'Direct link to Recovery ROM zip file'
         required: true
+      device_code:
+        description: 'Device codename (e.g. "nabu")'
+        required: true
+        default: 'nabu'
+      rom_name:
+        description: 'ROM name (e.g. "DerpFest")'
+        required: true
+      rom_maintainer:
+        description: 'ROM maintainer'
+        required: true
+      android_ver:
+        description: 'Android version (e.g. "16")'
+        required: true
+        default: '16'
+      device_name:
+        description: 'Device name'
+        required: true
+        default: 'Xiaomi Pad 5'
+      rom_build_date:
+        description: 'ROM build date (e.g. "07 Nov 2025")'
+        required: true
+        default: '07 Nov 2025'
+      security_patch_date:
+        description: 'Security patch level date (e.g. "01 Nov 2025")'
+        required: true
+        default: '01 Nov 2025'
+      rom_version:
+        description: 'ROM version/build identifier'
+        required: true
+        default: 'v16.0-20251107-nabu-UNOFFICIAL-Stable'
 
 jobs:
   Forge-Auto-Installer:
@@ -30,20 +60,90 @@ jobs:
           echo "Downloaded file: input/$filename"
           echo "filename=$filename" >> $GITHUB_OUTPUT
 
+      - name: Generate autoinstaller.conf
+        run: |
+          cat <<EOF > input/autoinstaller.conf
+          #!/sbin/sh
+          #
+          # Copyright (C) 2025-26 https://github.com/ArKT-7/Auto-Installer-Forge
+          #
+          # Made for flashing Android ROMs in recovery easily
+          #
+          
+          # ================================ Configurations ================================         
+          DEVICE_CODE="${{ github.event.inputs.device_code }}" # Device codename (must match your target device, e.g. "nabu" for Xiaomi Pad 5)
+          ROM_NAME="${{ github.event.inputs.rom_name }}" # The name of the ROM you're flashing
+          ROM_MAINTAINER="${{ github.event.inputs.rom_maintainer }}" # Name or handle of the ROM maintainer
+          ANDROID_VER="${{ github.event.inputs.android_ver }}" # Android version
+          DEVICE_NAME="${{ github.event.inputs.device_name }}" # Full device name
+          BUILD_DATE="${{ github.event.inputs.rom_build_date }}" # Build date of the ROM
+          SECURITY_PATCH="${{ github.event.inputs.security_patch_date }}" # Security patch level of the ROM
+          ROM_VERSION="${{ github.event.inputs.rom_version }}" # ROM version/build identifier
+          
+          # ASCII art to show first during flashing
+          ASCII_ART_LINES=(
+            "  ____                  _____         _   "
+            " |  _ \  ___ _ __ _ __ |  ___|__  ___| |_ "
+            " | | | |/ _ \ '__| '_ \| |_ / _ \/ __| __|"
+            " | |_| |  __/ |  | |_) |  _|  __/\__ \ |_ "
+            " |____/ \___|_|  | .__/|_|  \___||___/\__|"
+            "                 |_|                      "
+          )
+          
+          # List of files and their SHA-1 hashes for verification after extraction
+          # Format: "path/to/file.img" inside the auto-installer folder and "expected_sha1"
+          HASH_PAIRS=(
+            "images/boot.img" "055eeaf2fab0c06402ebf0a4a9027954cafeeb62"
+            "images/dtbo.img" "3d73e33f96ff2947c44e7c6f5ceef5e7f608c8ec"
+            "images/ksu-n_boot.img" "1a18f2379ecb9dfb1fc7ceb5bf4bfa477649194c"
+            "images/magisk_boot.img" "175d770619078cf5f0428cef61253df5ae6f8a73"
+            "images/userdata.img" "5a7f3428e42fc84d9bfacdf03d37b629a9c6a7b3"
+            "images/vbmeta.img" "73dbcee25570f241deb273d37bea9c9862ed92b0"
+            "images/vbmeta_system.img" "3f23ba86e4d98a283cc2db90d7f3f6abe1d89955"
+            "images/vendor_boot.img" "09716bee389e1278a7311f735375ed7be29d4cf8"
+          )
+          # Options for rooting, presented to the user, first option will be default
+          # Format: "Display Name" "corresponding_boot_image_filename (without .img)"
+          root_options_filename=(
+            "Root with Kernel-SU NEXT" "ksu-n_boot" "dtbo"
+            "No ROOT"                  "boot" "dtbo"
+            "Root with Magisk v29.0"   "magisk_boot" "dtbo"
+          )
+          
+          SELECTION_TIMEOUT=15  # Seconds to wait before auto-selecting default menu option
+          CHAR_WIDTH=54  		  # Max characters per printed line (used for text centering and wrapping)
+          BANNER_EXIT=" ------------------------Error!------------------------ "  # Banner shown on critical exit or error
+          
+          # ============================== Configurations End ==============================
+          EOF
+          echo "Created input/autoinstaller.conf"
+
       - name: Run Auto-Installer Forge script
         run: |
+          cat input/autoinstaller.conf
           chmod +x ./auto_installer.sh
           echo "Using zip file: input/${{ steps.download.outputs.filename }}"
-          bash ./auto_installer.sh "input/${{ steps.download.outputs.filename }}"
+          bash ./auto_installer.sh "input/${{ steps.download.outputs.filename }}" "input/autoinstaller.conf"
 
       - name: Find output subfolder
         id: find_folder
         run: |
-          SUBFOLDER=$(ls -1 out | head -n1)
+          if [ -d "Auto-Installer-Forge/out" ] && [ "$(ls -A Auto-Installer-Forge/out)" ]; then
+            SUBFOLDER=$(ls -1 Auto-Installer-Forge/out | head -n1)
+            OUTPUT_BASE="Auto-Installer-Forge/out"
+          elif [ -d "out" ] && [ "$(ls -A out)" ]; then
+            SUBFOLDER=$(ls -1 out | head -n1)
+            OUTPUT_BASE="out"
+          else
+            echo "No output folder found!"
+            exit 1
+          fi
+      
           echo "subfolder=$SUBFOLDER" >> $GITHUB_OUTPUT
+          echo "output_base=$OUTPUT_BASE" >> $GITHUB_OUTPUT
 
       - name: Upload Auto-Installer zip file
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.find_folder.outputs.subfolder }}
-          path: out/${{ steps.find_folder.outputs.subfolder }}/**
+          path: ${{ steps.find_folder.outputs.output_base }}/${{ steps.find_folder.outputs.subfolder }}/**

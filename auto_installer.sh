@@ -412,7 +412,12 @@ echo -e "payload.bin extraction complete."
 
 log "[INFO] Extracting payload.bin..."
 echo -e " "
-$BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" || { log "[ERROR] Extraction failed!"; exit 1; }
+if [ -n "$1" ]; then
+  $BIN_DIR/payload-dumper-go -l "$PAYLOAD_FILE"
+  $BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" > /dev/null 2>&1 || { log "[ERROR] Extraction failed!"; exit 1; }
+else
+  $BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" || { log "[ERROR] Extraction failed!"; exit 1; }
+fi
 log "[SUCCESS] Extraction completed."
 
 log "[INFO] Generating original checksums..."
@@ -647,6 +652,13 @@ download_with_fallback \
 patch_magisk_boot "Magisk_v29.0.apk"
 
 CONF_FILE="$TARGET_DIR/META-INF/autoinstaller.conf"
+if [ -n "$2" ] && [ -f "$2" ]; then
+    echo "Replacing $CONF_FILE from $2"
+    cp "$2" "$CONF_FILE"
+else
+    echo "Using default $CONF_FILE"
+fi
+
 IMAGES_DIR="$TARGET_DIR/images"
 
 # Generate the new HASH_PAIRS lines
