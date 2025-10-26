@@ -17,9 +17,17 @@ on:
         description: 'ROM maintainer'
         required: true
       android_ver:
-        description: 'Android version (e.g. "16")'
+        description: 'Android version'
         required: true
         default: '16'
+        type: choice
+        options:
+          - 16
+          - 15
+          - 14
+          - 13
+          - 12
+          - 11
       device_name:
         description: 'Device name'
         required: true
@@ -36,6 +44,16 @@ on:
         description: 'build identifier/ROM version'
         required: true
         default: 'v16.0-20251107-nabu-UNOFFICIAL-Stable'
+      root_type:
+        description: 'Select root method present in ROM'
+        required: true
+        default: 'Kernel Su Next'
+        type: choice
+        options:
+          - Kernel Su Next
+          - Kernel Su
+          - Sukisu-Ultra
+          - No Root
 
 jobs:
   Forge-Auto-Installer:
@@ -93,21 +111,12 @@ jobs:
           # List of files and their SHA-1 hashes for verification after extraction
           # Format: "path/to/file.img" inside the auto-installer folder and "expected_sha1"
           HASH_PAIRS=(
-            "images/boot.img" "055eeaf2fab0c06402ebf0a4a9027954cafeeb62"
-            "images/dtbo.img" "3d73e33f96ff2947c44e7c6f5ceef5e7f608c8ec"
-            "images/ksu-n_boot.img" "1a18f2379ecb9dfb1fc7ceb5bf4bfa477649194c"
-            "images/magisk_boot.img" "175d770619078cf5f0428cef61253df5ae6f8a73"
-            "images/userdata.img" "5a7f3428e42fc84d9bfacdf03d37b629a9c6a7b3"
-            "images/vbmeta.img" "73dbcee25570f241deb273d37bea9c9862ed92b0"
-            "images/vbmeta_system.img" "3f23ba86e4d98a283cc2db90d7f3f6abe1d89955"
-            "images/vendor_boot.img" "09716bee389e1278a7311f735375ed7be29d4cf8"
           )
           # Options for rooting, presented to the user, first option will be default
           # Format: "Display Name" "corresponding_boot_image_filename (without .img)"
           root_options_filename=(
-            "Root with Kernel-SU NEXT" "ksu-n_boot" "dtbo"
-            "No ROOT"                  "boot" "dtbo"
-            "Root with Magisk v29.0"   "magisk_boot" "dtbo"
+            "Root with ${{ github.event.inputs.root_type }}" "boot" "dtbo"
+            "Root with Magisk v29.0" "magisk_boot" "dtbo"
           )
           
           SELECTION_TIMEOUT=15  # Seconds to wait before auto-selecting default menu option
@@ -118,6 +127,11 @@ jobs:
           EOF
           echo "Created input/autoinstaller.conf"
 
+      - name: Fix autoinstaller.conf if needed
+        if: ${{ github.event.inputs.root_type == 'No Root' }}
+        run: |
+          sed -i 's/"Root with No Root"/"No Root"/' input/autoinstaller.conf
+    
       - name: Run Auto-Installer Forge script
         run: |
           cat input/autoinstaller.conf
