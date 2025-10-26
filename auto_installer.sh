@@ -496,9 +496,10 @@ $BIN_DIR/busybox mkdir -p "$TARGET_DIR/bin/windows/platform-tools"
 $BIN_DIR/busybox mkdir -p "$TARGET_DIR/bin/windows/log-tool" 
 $BIN_DIR/busybox mkdir -p "$TARGET_DIR/bin/linux/platform-tools" 
 $BIN_DIR/busybox mkdir -p "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY"
-for img in boot dtbo vendor_boot vbmeta vbmeta_system super; do
-    $BIN_DIR/busybox mv "$TARGET_DIR/${img}.img" "$TARGET_DIR/images/${img}.img"
-done
+# for img in boot dtbo vendor_boot vbmeta vbmeta_system super; do
+#     $BIN_DIR/busybox mv "$TARGET_DIR/${img}.img" "$TARGET_DIR/images/${img}.img"
+# done
+"$BIN_DIR/busybox" mv "$TARGET_DIR"/*.img "$TARGET_DIR/images/"
 
 #still gotta upload to mirror location for fallback
 download_with_fallback \
