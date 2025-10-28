@@ -12,8 +12,9 @@ YELLOW="${ESC}[93m"
 GREEN="${ESC}[92m"
 RESET="${ESC}[0m"
 
-ROM_MAINTAINER="P.A.N.Z."
-required_files=("boot.img" "dtbo.img" "ksu-n_boot.img" "magisk_boot.img" "super.img" "userdata.img" "vbmeta.img" "vbmeta_system.img" "vendor_boot.img")
+ROM_MAINTAINER="idk"
+required_files=("boot.img" "dtbo.img" "magisk_boot.img" "super.img" "userdata.img" "vbmeta.img" "vbmeta_system.img" "vendor_boot.img")
+root="Root with (KSU-N - Kernel SU NEXT)"
 
 print_ascii() {
     echo
@@ -201,14 +202,13 @@ while true; do
     echo
     echo -e "${YELLOW}Choose installation method:${RESET}" | tee -a "$log_file"
     echo
-    echo -e "${YELLOW}1.${RESET} With root (KSU-N - Kernel SU NEXT)"
-    echo -e "${YELLOW}2.${RESET} Without root"
-    echo -e "${YELLOW}3.${RESET} With root (Magisk v29.0)"
-    echo -e "${YELLOW}4.${RESET} Cancel Flashing ROM"
+    echo -e "${YELLOW}1.${RESET} $root"
+    echo -e "${YELLOW}2.${RESET} Root with (Magisk v29.0)"
+    echo -e "${YELLOW}3.${RESET} Cancel Flashing ROM"
     echo
-    read -p "Enter option (1, 2, 3 or 4): " install_choice
+    read -p "Enter option (1, 2 or 3): " install_choice
     install_choice=$(echo -e "$install_choice" | xargs)
-    if [[ ! "$install_choice" =~ ^[1-4]$ ]]; then
+    if [[ ! "$install_choice" =~ ^[1-3]$ ]]; then
         echo -e "${RED}Invalid option, ${YELLOW}Please try again.${RESET}" | tee -a "$log_file"
         continue
     fi
@@ -218,10 +218,10 @@ while true; do
             print_ascii
             print_note
             echo
-            echo -e "${YELLOW}Starting installation with KSU-NEXT...${RESET}" | tee -a "$log_file"
+            echo -e "${YELLOW}Starting installation $root...${RESET}" | tee -a "$log_file"
             $fastboot set_active a  2>&1 | tee -a "$log_file"
 			echo
-            FlashPartition boot ksu-n_boot.img
+            FlashPartition boot boot.img
             FlashPartition dtbo dtbo.img
             break
             ;;
@@ -230,26 +230,14 @@ while true; do
             print_ascii
             print_note
             echo
-            echo -e "${YELLOW}Starting installation without root...${RESET}" | tee -a "$log_file"
-            $fastboot set_active a  2>&1 | tee -a "$log_file"
-			echo
-            FlashPartition boot boot.img
-            FlashPartition dtbo dtbo.img
-            break
-            ;;
-        3)
-            clear    
-            print_ascii
-            print_note
-            echo
-            echo -e "${YELLOW}Starting installation with Magisk...${RESET}" | tee -a "$log_file"
+            echo -e "${YELLOW}Starting installation with Magisk v29.0...${RESET}" | tee -a "$log_file"
             $fastboot set_active a  2>&1 | tee -a "$log_file"
 			echo
             FlashPartition boot magisk_boot.img
             FlashPartition dtbo dtbo.img
             break
             ;;
-        4)
+        3)
            exit
     esac
 done

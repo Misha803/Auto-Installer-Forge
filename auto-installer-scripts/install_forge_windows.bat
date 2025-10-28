@@ -14,8 +14,9 @@ set YELLOW=%ESC%[93m
 set GREEN=%ESC%[92m
 set RESET=%ESC%[0m
 
-set ROM_MAINTAINER=P.A.N.Z.
-set required_files=boot.img dtbo.img ksu-n_boot.img magisk_boot.img super.img userdata.img vbmeta.img vbmeta_system.img vendor_boot.img
+set ROM_MAINTAINER=idk
+set required_files=boot.img dtbo.img magisk_boot.img super.img userdata.img vbmeta.img vbmeta_system.img vendor_boot.img
+set root=Root with (KSU-N - Kernel SU NEXT)
 
 CALL :print_ascii
 if not exist "images" (
@@ -213,39 +214,25 @@ echo.
 :choose_method
 call :log "%YELLOW%Choose installation method:%RESET%"
 echo.
-echo %YELLOW%1.%RESET% With root (KSU-N - Kernel SU NEXT)
-echo %YELLOW%2.%RESET% Without root
-echo %YELLOW%3.%RESET% With root (Magisk v29.0)
-echo %YELLOW%4.%RESET% Cancel Flashing ROM 
+echo %YELLOW%1.%RESET% %root%
+echo %YELLOW%2.%RESET% With root (Magisk v29.0)
+echo %YELLOW%3.%RESET% Cancel Flashing ROM 
 echo.
-set /p install_choice=Enter option (1, 2, 3 or 4): 
+set /p install_choice=Enter option (1, 2 or 3): 
 
-if "%install_choice%"=="1" goto install_ksu-n
-if "%install_choice%"=="2" goto install_no_root
-if "%install_choice%"=="3" goto install_magisk
-if "%install_choice%"=="4" exit
+if "%install_choice%"=="1" goto install_default
+if "%install_choice%"=="2" goto install_magisk
+if "%install_choice%"=="3" exit
 call :log "%RED%Invalid option, %YELLOW%Please try again.%RESET%"
 echo.
 goto choose_method
-:install_ksu-n
+:install_default
 cls
 cls
 CALL :print_ascii
 CALL :print_note
 echo.
-call :log "%YELLOW%Starting installation with KSU-NEXT...%RESET%"
-%fastboot% set_active a 2>&1 | %tee% -a "%log_file%"
-echo.
-CALL :FlashPartition boot ksu-n_boot.img
-CALL :FlashPartition dtbo dtbo.img
-goto common_flash
-:install_no_root
-cls
-cls
-CALL :print_ascii
-CALL :print_note
-echo.
-call :log "%YELLOW%Starting installation without root...%RESET%"
+call :log "%YELLOW%Starting installation %root%...%RESET%"
 %fastboot% set_active a 2>&1 | %tee% -a "%log_file%"
 echo.
 CALL :FlashPartition boot boot.img

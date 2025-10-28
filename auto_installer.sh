@@ -732,6 +732,7 @@ log "[INFO] Now, let's update configration file for this rom!\n"
 #update_field "DEVICE_CODE" "DEVICE CODE"
 if [ -n "$2" ] && [ -f "$2" ]; then
     log "[INFO] using config from $2"
+    ROOT_TYPE=$(grep '^ROOT_TYPE=' "$CONF_FILE" | cut -d'=' -f2)
 else
 	update_field "ROM_NAME" "ROM name"
 	update_field "ROM_MAINTAINER" "ROM maintainer"
@@ -740,7 +741,56 @@ else
 	update_field "BUILD_DATE" "Build date"
 	update_field "SECURITY_PATCH" "Security patch"
 	update_field "ROM_VERSION" "ROM Build version"
+    echo
+    echo "Choose root method present in ROM:"
+    echo
+    echo "1) With root (KSU-N - Kernel SU NEXT)"
+    echo "2) With root (KSU - Kernel SU)"
+    echo "3) With root (SukiSU-Ultra)"
+    echo "4) Without root"
+    echo
+
+    while true; do
+    read -rp "Enter the number (1-4): " ROOT_TYPE
+    case $ROOT_TYPE in
+        1|2|3|4)
+        echo
+        break
+        ;;
+        *)
+        echo "Invalid input. Please enter a number between 1 and 4."
+        echo
+        ;;
+    esac
+    done
+
 fi
+case "$ROOT_TYPE" in
+  1)
+    root="Root with (KSU-N - Kernel SU NEXT)"
+    ;;
+  2)
+    root="Root with (KSU - Kernel SU)"
+    ;;
+  3)
+    root="Root with (SukiSU-Ultra)"
+    ;;
+  4)
+    root="Without root"
+    ;;
+  *)
+    root="Root with (KSU-N - Kernel SU NEXT)"
+    ;;
+esac
+$BIN_DIR/busybox sed -i "s|Root with idk|$root|g" "$CONF_FILE"
+for base in install_forge_linux.sh update_forge_linux.sh; do
+  [ -f "$TARGET_DIR/$base" ] && \
+  $BIN_DIR/busybox sed -i "s/^root=\".*\"/root=\"$root\"/" "$TARGET_DIR/$base"
+done
+for base in install_forge_windows.bat update_forge_windows.bat; do
+  [ -f "$TARGET_DIR/$base" ] && \
+  $BIN_DIR/busybox sed -i "s/^set root=.*/set root=$root/" "$TARGET_DIR/$base"
+done
 
 # Extract ROM_MAINTAINER value
 maintainer=$(grep '^ROM_MAINTAINER=' "$CONF_FILE" | sed -n 's/^ROM_MAINTAINER="\([^"]*\)".*/\1/p')

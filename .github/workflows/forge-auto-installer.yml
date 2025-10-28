@@ -74,6 +74,17 @@ jobs:
           echo "Downloaded file: input/$filename"
           echo "filename=$filename" >> $GITHUB_OUTPUT
 
+      - name: Map root_type string to ROOT_TYPE number
+        run: |
+          case "${{ github.event.inputs.root_type }}" in
+            "Kernel Su Next") ROOT_TYPE=1 ;;
+            "Kernel Su") ROOT_TYPE=2 ;;
+            "Sukisu-Ultra") ROOT_TYPE=3 ;;
+            "No Root") ROOT_TYPE=4 ;;
+            *) ROOT_TYPE=1 ;;
+          esac
+          echo "ROOT_TYPE=$ROOT_TYPE" >> $GITHUB_ENV
+
       - name: Generate autoinstaller.conf
         run: |
           cat <<EOF > input/autoinstaller.conf
@@ -105,8 +116,9 @@ jobs:
           
           # Options for rooting, presented to the user, first option will be default
           # Format: "Display Name" "corresponding_boot_image_filename (without .img)"
+          ROOT_TYPE=${{ env.ROOT_TYPE }}
           root_options_filename=(
-            "Root with ${{ github.event.inputs.root_type }}" "boot" "dtbo"
+            "Root with idk" "boot" "dtbo"
             "Root with Magisk v29.0" "magisk_boot" "dtbo"
           )
           
@@ -118,11 +130,6 @@ jobs:
           EOF
           echo "Created input/autoinstaller.conf"
 
-      - name: Fix autoinstaller.conf if needed
-        if: ${{ github.event.inputs.root_type == 'No Root' }}
-        run: |
-          sed -i 's/"Root with No Root"/"No Root"/' input/autoinstaller.conf
-    
       - name: Install figlet for ASCII art
         run: sudo apt-get update && sudo apt-get install -y figlet
         
