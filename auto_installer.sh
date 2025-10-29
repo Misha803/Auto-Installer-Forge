@@ -10,6 +10,10 @@ URL_BUSYBOX="$BASE_URL/bin/linux_amd64/busybox"
 URL_PAYLOAD_DUMPER="$BASE_URL/bin/linux_amd64/payload-dumper-go"
 URL_LPMAKE="$BASE_URL/bin/linux_amd64/lpmake"
 URL_LPUNPACK="$BASE_URL/bin/linux_amd64/lpunpack"
+URL_FIGLET="$BASE_URL/bin/linux_amd64/figlet"
+URL_FONT1="$BASE_URL/bin/figlet_fonts/standard.flf"
+URL_FONT2="$BASE_URL/bin/figlet_fonts/nancyj.flf"
+URL_FONT3="$BASE_URL/bin/figlet_fonts/sblood.flf"
 
 current_dir=$(basename "$PWD")
 if [ "$current_dir" = "Auto-Installer-Forge" ]; then
@@ -326,6 +330,11 @@ download_and_set_permissions "$URL_BUSYBOX" "$BIN_DIR/busybox"
 download_and_set_permissions "$URL_PAYLOAD_DUMPER" "$BIN_DIR/payload-dumper-go"
 download_and_set_permissions "$URL_LPMAKE" "$BIN_DIR/lpmake"
 download_and_set_permissions "$URL_LPUNPACK" "$BIN_DIR/lpunpack"
+download_and_set_permissions "$URL_FIGLET" "$BIN_DIR/figlet"
+download_and_set_permissions "$URL_FONT1" "$BIN_DIR/standard.flf"
+download_and_set_permissions "$URL_FONT2" "$BIN_DIR/nancyj.flf"
+download_and_set_permissions "$URL_FONT3" "$BIN_DIR/sblood.flf"
+
 # URL to the checksum file
 CHECKSUM_FILE="$BIN_DIR/checksum.arkt"
 CHECKSUM_AVAILABLE=1  # Assume checksum is available
@@ -818,6 +827,57 @@ comment=$(echo -e "$line" | $BIN_DIR/busybox sed -n 's/^ROM_NAME="[^"]*"[[:space
 
 # Sanitize ROM name by removing non-alphanum and replace space with _ underscore
 sanitized_name=$(echo -e "$value" | $BIN_DIR/busybox tr ' ' '_' | $BIN_DIR/busybox tr -cd '[:alnum:]_-')
+
+# Generate ASCII and replace inside autoinstaller.conf
+$BIN_DIR/figlet -f $BIN_DIR/standard.flf -w 100 $value > $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i 's#\\#\\\\#g' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i 's/^/"/;s/$/"/' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '/ASCII_ART_LINES=(/,/^)/ { /ASCII_ART_LINES=(/!{/^)/!d } }' "$CONF_FILE"
+$BIN_DIR/busybox sed -i "/ASCII_ART_LINES=(/r $BIN_DIR/ascii" "$CONF_FILE"
+
+# Generate ASCII and replace inside linux flasher scripts
+rm -f $BIN_DIR/ascii
+$BIN_DIR/figlet -f $BIN_DIR/nancyj.flf -w 100 $value > $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '/^[[:space:]]*$/d' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i 's/^/    echo -e " /;s/$/"/' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '1s/^/    echo\n/' $BIN_DIR/ascii
+for base in install_forge_linux.sh update_forge_linux.sh; do
+  [ -f "$TARGET_DIR/$base" ] && \
+  $BIN_DIR/busybox sed -i '/print_ascii() {/ { n; N; N; N; N; N; N; d; }' "$TARGET_DIR/$base" && \
+  $BIN_DIR/busybox sed -i "/print_ascii()/r $BIN_DIR/ascii" "$TARGET_DIR/$base"
+done
+rm -f $BIN_DIR/ascii
+$BIN_DIR/figlet -f $BIN_DIR/nancyj.flf -w 100 $value > $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '/^[[:space:]]*$/d' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i 's/^/    echo -e " /;s/$/" | tee -a "$log_file"/' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '1s/^/    echo\n/' $BIN_DIR/ascii
+for base in install_forge_linux.sh update_forge_linux.sh; do
+  [ -f "$TARGET_DIR/$base" ] && \
+  $BIN_DIR/busybox sed -i '/print_log_ascii() {/ { n; N; N; N; N; N; N; d; }' "$TARGET_DIR/$base" && \
+  $BIN_DIR/busybox sed -i "/print_log_ascii()/r $BIN_DIR/ascii" "$TARGET_DIR/$base"
+done
+
+# Generate ASCII and replace inside windows flasher scripts
+rm -f $BIN_DIR/ascii
+$BIN_DIR/figlet -f $BIN_DIR/nancyj.flf -w 100 $value > $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '/^[[:space:]]*$/d' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i 's/^/echo /' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '1s/^/echo.\n/' $BIN_DIR/ascii
+for base in install_forge_windows.bat update_forge_windows.bat; do
+  [ -f "$TARGET_DIR/$base" ] && \
+  $BIN_DIR/busybox sed -i '/^:print_ascii[[:space:]]*$/ { n; N; N; N; N; N; N; d; }' "$TARGET_DIR/$base" && \
+  $BIN_DIR/busybox sed -i "/^:print_ascii[[:space:]]*$/r $BIN_DIR/ascii" "$TARGET_DIR/$base"
+done
+rm -f $BIN_DIR/ascii
+$BIN_DIR/figlet -f $BIN_DIR/nancyj.flf -w 100 $value > $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '/^[[:space:]]*$/d' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i 's/^/call :log  " /;s/$/"/' $BIN_DIR/ascii
+$BIN_DIR/busybox sed -i '1s/^/echo.\n/' $BIN_DIR/ascii
+for base in install_forge_windows.bat update_forge_windows.bat; do
+  [ -f "$TARGET_DIR/$base" ] && \
+  $BIN_DIR/busybox sed -i '/^:print_log_ascii[[:space:]]*$/ { n; N; N; N; N; N; N; d; }' "$TARGET_DIR/$base" && \
+  $BIN_DIR/busybox sed -i "/^:print_log_ascii[[:space:]]*$/r $BIN_DIR/ascii" "$TARGET_DIR/$base"
+done
 
 # Rename auto-insatller scripts file with new rom name
 for base in install_forge_linux.sh update_forge_linux.sh install_forge_windows.bat update_forge_windows.bat; do

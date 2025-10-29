@@ -302,11 +302,12 @@ pause > nul
 exit
 :print_ascii
 echo.
-echo @@@@@@@  @@@@@@@@ @@@@@@@  @@@@@@@  @@@@@@@@ @@@@@@@@  @@@@@@ @@@@@@@
-echo @@:  @@@ @@:      @@:  @@@ @@:  @@@ @@:      @@:      :@@       @@:  
-echo @:@  :@: @:::::   @:@::@:  @:@@:@:  @:::::   @:::::    :@@::    @::  
-echo :::  ::: :::      ::: :::  :::      :::      :::          :::   :::  
-echo :: :  :  : :: :::  :   : :  :        :       : :: ::: ::.: :     :  
+echo oo       dP dP          .d8888ba  
+echo          88 88           8'    8b 
+echo dP .d888b88 88  .dP          .d8' 
+echo 88 88'   88 88888          d8P'   
+echo 88 88.  .88 88   8b.              
+echo dP  88888P8 dP    YP       oo     
 echo.
 echo This rom built by: %ROM_MAINTAINER%
 echo.
@@ -321,11 +322,12 @@ echo ######################################################################
 exit /b 1
 :print_log_ascii
 echo.
-call :log  "@@@@@@@  @@@@@@@@ @@@@@@@  @@@@@@@  @@@@@@@@ @@@@@@@@  @@@@@@ @@@@@@@"
-call :log  "@@:  @@@ @@:      @@:  @@@ @@:  @@@ @@:      @@:      :@@       @@:  "
-call :log  "@:@  :@: @:::::   @:@::@:  @:@@:@:  @:::::   @:::::    :@@::    @::  "
-call :log  ":::  ::: :::      ::: :::  :::      :::      :::          :::   :::  "
-call :log  ":: :  :  : :: :::  :   : :  :        :       : :: ::: ::.: :     :   "
+call :log  " oo       dP dP          .d8888ba  "
+call :log  "          88 88           8'    8b "
+call :log  " dP .d888b88 88  .dP          .d8' "
+call :log  " 88 88'   88 88888          d8P'   "
+call :log  " 88 88.  .88 88   8b.              "
+call :log  " dP  88888P8 dP    YP       oo     "
 echo.
 call :log  "This rom built by: %ROM_MAINTAINER%"
 echo.

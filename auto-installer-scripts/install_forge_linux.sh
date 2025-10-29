@@ -18,14 +18,12 @@ root="Root with (KSU-N - Kernel SU NEXT)"
 
 print_ascii() {
     echo
-    echo -e "█████▄ ▓█████  ██▀███   ██▓███    █████▒▓█████   ██████ ▄▄▄█████▓ "
-    echo -e "▒██▀ ██▌▓█   ▀ ▓██ ▒ ██▒▓██░  ██▒▓██   ▒ ▓█   ▀ ▒██    ▒ ▓  ██▒ ▓▒"
-    echo -e "░██   █▌▒███   ▓██ ░▄█ ▒▓██░ ██▓▒▒████ ░ ▒███   ░ ▓██▄   ▒ ▓██░ ▒░"
-    echo -e "░▓█▄   ▌▒▓█  ▄ ▒██▀▀█▄  ▒██▄█▓▒ ▒░▓█▒  ░ ▒▓█  ▄   ▒   ██▒░ ▓██▓ ░ "
-    echo -e "░▒████▓ ░▒████▒░██▓ ▒██▒▒██▒ ░  ░░▒█░    ░▒████▒▒██████▒▒  ▒██▒ ░ "
-    echo -e " ▒▒▓  ▒ ░░ ▒░ ░░ ▒▓ ░▒▓░▒▓▒░ ░  ░ ▒ ░    ░░ ▒░ ░▒ ▒▓▒ ▒ ░  ▒ ░░   "
-    echo -e " ░ ▒  ▒  ░ ░  ░  ░▒ ░ ▒░░▒ ░      ░       ░ ░  ░░ ░▒  ░ ░    ░    "
-    echo -e " ░ ░  ░    ░     ░░   ░ ░░        ░ ░       ░   ░  ░  ░    ░      "
+    echo -e " oo       dP dP          .d8888ba  "
+    echo -e "          88 88           8'    8b "
+    echo -e " dP .d888b88 88  .dP          .d8' "
+    echo -e " 88 88'   88 88888          d8P'   "
+    echo -e " 88 88.  .88 88   8b.              "
+    echo -e " dP  88888P8 dP    YP       oo     "
     echo
     echo -e "This rom built by: ${ROM_MAINTAINER}"
     echo
@@ -39,14 +37,12 @@ print_note() {
 }
 print_log_ascii() {
     echo
-    echo -e "█████▄ ▓█████  ██▀███   ██▓███    █████▒▓█████   ██████ ▄▄▄█████▓ " | tee -a "$log_file"
-    echo -e "▒██▀ ██▌▓█   ▀ ▓██ ▒ ██▒▓██░  ██▒▓██   ▒ ▓█   ▀ ▒██    ▒ ▓  ██▒ ▓▒" | tee -a "$log_file"
-    echo -e "░██   █▌▒███   ▓██ ░▄█ ▒▓██░ ██▓▒▒████ ░ ▒███   ░ ▓██▄   ▒ ▓██░ ▒░" | tee -a "$log_file"
-    echo -e "░▓█▄   ▌▒▓█  ▄ ▒██▀▀█▄  ▒██▄█▓▒ ▒░▓█▒  ░ ▒▓█  ▄   ▒   ██▒░ ▓██▓ ░ " | tee -a "$log_file"
-    echo -e "░▒████▓ ░▒████▒░██▓ ▒██▒▒██▒ ░  ░░▒█░    ░▒████▒▒██████▒▒  ▒██▒ ░ " | tee -a "$log_file"
-    echo -e " ▒▒▓  ▒ ░░ ▒░ ░░ ▒▓ ░▒▓░▒▓▒░ ░  ░ ▒ ░    ░░ ▒░ ░▒ ▒▓▒ ▒ ░  ▒ ░░   " | tee -a "$log_file"
-    echo -e " ░ ▒  ▒  ░ ░  ░  ░▒ ░ ▒░░▒ ░      ░       ░ ░  ░░ ░▒  ░ ░    ░    " | tee -a "$log_file"
-    echo -e " ░ ░  ░    ░     ░░   ░ ░░        ░ ░       ░   ░  ░  ░    ░      " | tee -a "$log_file"
+    echo -e " oo       dP dP          .d8888ba  " | tee -a "$log_file"
+    echo -e "          88 88           8'    8b " | tee -a "$log_file"
+    echo -e " dP .d888b88 88  .dP          .d8' " | tee -a "$log_file"
+    echo -e " 88 88'   88 88888          d8P'   " | tee -a "$log_file"
+    echo -e " 88 88.  .88 88   8b.              " | tee -a "$log_file"
+    echo -e " dP  88888P8 dP    YP       oo     " | tee -a "$log_file"
     echo
     echo -e "This rom built by: ${ROM_MAINTAINER}" | tee -a "$log_file"
     echo
