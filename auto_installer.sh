@@ -26,9 +26,9 @@ else
   MAGISK_DIR="$BIN_DIR/magisk_patch"
 fi
 mkdir -p "$WORK_DIR" "$MAGISK_DIR"
-# echo "BIN_DIR=$BIN_DIR"
-# echo "WORK_DIR=$WORK_DIR"
-# echo "MAGISK_DIR=$MAGISK_DIR"
+# echo -e "BIN_DIR=$BIN_DIR"
+# echo -e "WORK_DIR=$WORK_DIR"
+# echo -e "MAGISK_DIR=$MAGISK_DIR"
 
 log() {
     echo -e -e "\n[$(date +"%H:%M:%S")] $1"
@@ -55,7 +55,7 @@ download_file() {
 get_checksum() {
     local filename="$1"
     if [ "$CHECKSUM_AVAILABLE" -eq 0 ]; then
-        echo -e ""
+        echo " "
         return
     fi
     grep "^$filename=" "$CHECKSUM_FILE" | cut -d'=' -f2
@@ -166,13 +166,13 @@ patch_magisk_boot() {
     if [ -z "$sdk_version" ]; then
     sdk_version=36
     fi
-    echo "API level is: $sdk_version"
+    echo -e "API level is: $sdk_version"
     # Extract ABI version
     # abi_version=$(strings "$TARGET_DIR/images/super.img" | grep -m 1 'ro.product.cpu.abi=' | cut -d'=' -f2)
     # if [ -z "$abi_version" ]; then
     abi_version=arm64-v8a
     # fi
-    # echo "API level is: $abi_version"
+    # echo -e "API level is: $abi_version"
 
     $BIN_DIR/busybox sed -i \
     -e "s|API=\$(grep_get_prop ro.build.version.sdk)|API=$sdk_version|" \
@@ -208,15 +208,15 @@ update_field() {
 
     line=$(grep "^$field=" "$CONF_FILE")
 
-    value=$(echo -e "$line" | $BIN_DIR/busybox sed -n "s/^$field=\"\([^\"]*\)\".*/\1/p")
+    value=$(echo "$line" | $BIN_DIR/busybox sed -n "s/^$field=\"\([^\"]*\)\".*/\1/p")
 
-    comment=$(echo -e "$line" | $BIN_DIR/busybox sed -n "s/^$field=\"[^\"]*\"[[:space:]]*\(.*\)/\1/p")
+    comment=$(echo "$line" | $BIN_DIR/busybox sed -n "s/^$field=\"[^\"]*\"[[:space:]]*\(.*\)/\1/p")
 
     if [ -n "$direct_value" ]; then
         new_value="$direct_value"
     else
         echo -e "Current $label: $value"
-        printf "Enter new $label (leave blank to keep current): "
+        echo -n "Enter new $label (leave blank to keep current): "
         read new_value
         [ -z "$new_value" ] && new_value="$value"
     fi
@@ -239,7 +239,7 @@ get_payload_zip_path() {
     if [ -z "$INPUT_PATH" ] || [ ! -e "$INPUT_PATH" ]; then
         echo -e "\nPlease enter the full path to an AOSP ROM ZIP file or a folder containing multiple ROM ZIPs:\n"
         read -r INPUT_PATH
-        echo -e " "
+        echo " "
     fi
 
     #INPUT_PATH=$(echo "$INPUT_PATH" | sed 's:^~:'"$HOME"':' | sed 's:/*$::')
@@ -356,7 +356,7 @@ if [ -d "$WORK_DIR" ]; then
             echo -e "\n[WARNING] Existing files found in $WORK_DIR. Choose an option:\n"
             echo -e "1) Delete all existing files from $WORK_DIR and start fresh"
             echo -e "2) Move old files to a backup folder"
-            echo -e "3) Exit script"
+            echo -e "3) Exit script\n"
             read -r choice
 
             case "$choice" in
@@ -409,7 +409,7 @@ TARGET_DIR="$WORK_DIR/${ZIP_NAME}_FASTBOOT_RECOVERY"
 $BIN_DIR/busybox mkdir -p "$TARGET_DIR"
 
 # Unzip only the payload.bin file into the created directory
-echo -e " "
+echo " "
 echo -e "Extracting payload.bin"
 $BIN_DIR/busybox unzip -o "$SELECTED_ZIP_FILE" "payload.bin" -d "$TARGET_DIR"
 
@@ -425,7 +425,7 @@ PAYLOAD_FILE="$TARGET_DIR/payload.bin"
 echo -e "payload.bin extraction complete."
 
 log "[INFO] Extracting payload.bin..."
-echo -e " "
+echo " "
 if [ -n "$1" ]; then
   $BIN_DIR/payload-dumper-go -l "$PAYLOAD_FILE"
   $BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" > /dev/null 2>&1 || { log "[ERROR] Extraction failed!"; exit 1; }
@@ -454,7 +454,7 @@ TOTAL_SIZE=$($BIN_DIR/busybox du -b "${checksum_files[@]}" | $BIN_DIR/busybox aw
 echo -e "Total size (with buffer): $TOTAL_SIZE"
 
 log "[INFO] Creating super.img..."
-echo -e ""
+echo " "
 partition_args=()
 group_a="super_group_a"
 group_b="super_group_b"
@@ -692,10 +692,10 @@ patch_magisk_boot "Magisk_v29.0.apk"
 
 CONF_FILE="$TARGET_DIR/META-INF/autoinstaller.conf"
 if [ -n "$2" ] && [ -f "$2" ]; then
-    echo "Replacing $CONF_FILE from $2"
+    echo -e "Replacing $CONF_FILE from $2"
     cp "$2" "$CONF_FILE"
 else
-    echo "Using default $CONF_FILE"
+    echo -e "Using default $CONF_FILE"
 fi
 
 IMAGES_DIR="$TARGET_DIR/images"
@@ -710,7 +710,7 @@ for img in "$IMAGES_DIR"/*.img; do
   [ "$name" = "super.img" ] && continue
 
   sha1=$($BIN_DIR/busybox sha1sum "$img" | $BIN_DIR/busybox awk '{print $1}')
-  echo -e "  \"images/$name\" \"$sha1\"" >> "$tmp_hashes"
+  echo "  \"images/$name\" \"$sha1\"" >> "$tmp_hashes"
 done
 
 $BIN_DIR/busybox sed -i '/^HASH_PAIRS=(/,/^)/ {
@@ -727,7 +727,7 @@ log "[INFO] Extracting build date from ROM..\n"
 raw_build_date=$(strings "$TARGET_DIR/images/super.img" | grep -m 1 'build.date=' | cut -d'=' -f2)
 parsed_input=$(echo "$raw_build_date" | $BIN_DIR/busybox sed -E 's/ [A-Z]{3} / /')
 parsed_build_date=$($BIN_DIR/busybox date -d "$parsed_input" -D "%a %b %d %T %Y" +"%d %b %Y")
-echo "Parsed date: $parsed_build_date"
+echo -e "Parsed date: $parsed_build_date"
 update_field "BUILD_DATE" "Build date" "$parsed_build_date"
 
 log "[SUCCESS] Auto-Installer-Forge files processing finished!\n"
@@ -747,46 +747,40 @@ else
 	update_field "BUILD_DATE" "Build date"
 	update_field "SECURITY_PATCH" "Security patch"
 	update_field "ROM_VERSION" "ROM Build version"
-    echo
-    echo "Choose root method present in ROM:"
-    echo
-    echo "1) With root (KSU-N - Kernel SU NEXT)"
-    echo "2) With root (KSU - Kernel SU)"
-    echo "3) With root (SukiSU-Ultra)"
-    echo "4) Without root"
-    echo
-
+    echo -e "\nChoose root method present in ROM:\n"
+    echo -e "1) With root (KSU-N - Kernel SU NEXT)"
+    echo -e "2) With root (KSU - Kernel SU)"
+    echo -e "3) With root (SukiSU-Ultra)"
+    echo -e "4) Without root\n"
     while true; do
-    read -rp "Enter the number (1-4): " ROOT_TYPE
+    echo -n "Enter the number (1-4): "
+    read -r ROOT_TYPE
     case $ROOT_TYPE in
-        1|2|3|4)
-        echo
-        break
-        ;;
-        *)
-        echo "Invalid input. Please enter a number between 1 and 4."
-        echo
-        ;;
+        [1-4]) echo; break ;;
+        *) echo -e "Invalid input. Please enter a number between 1 and 4.\n" ;;
     esac
     done
 
+    echo -e "\nChoose the default behavior when flashing ROM via recovery:\n"
+    echo -e "1) Dirty Flash (Update only - keeps user data)"
+    echo -e "2) Clean Flash (Factory reset - wipes all data)\n"
+    while true; do
+    echo -n "Enter the number (1-2): "
+    read -r FORMAT_MODE
+    case $FORMAT_MODE in
+        1|2) echo; break ;;
+        *) echo -e "Invalid input. Please enter 1 or 2.\n" ;;
+    esac
+    done
+    [ "$FORMAT_MODE" -eq 1 ] && FORMAT_MODE=0 || FORMAT_MODE=1
+    $BIN_DIR/busybox sed -i "s/^FORMAT_DEFAULT=.*/FORMAT_DEFAULT=$FORMAT_MODE  # set 1 if want format default selected/" "$CONF_FILE"
 fi
 case "$ROOT_TYPE" in
-  1)
-    root="Root with (KSU-N - Kernel SU NEXT)"
-    ;;
-  2)
-    root="Root with (KSU - Kernel SU)"
-    ;;
-  3)
-    root="Root with (SukiSU-Ultra)"
-    ;;
-  4)
-    root="Without root"
-    ;;
-  *)
-    root="Root with (KSU-N - Kernel SU NEXT)"
-    ;;
+  1) root="Root with (KSU-N - Kernel SU NEXT)" ;;
+  2) root="Root with (KSU - Kernel SU)" ;;
+  3) root="Root with (SukiSU-Ultra)" ;;
+  4) root="Without root" ;;
+  *) root="Root with (KSU-N - Kernel SU NEXT)" ;;
 esac
 
 bases_linux=(install_forge_linux.sh update_forge_linux.sh)
@@ -822,13 +816,13 @@ done
 line=$(grep "^ROM_NAME=" "$CONF_FILE")
 
 # Extract value and optional comment
-value=$(echo -e "$line" | $BIN_DIR/busybox sed -n 's/^ROM_NAME="\([^"]*\)".*/\1/p')
-#comment=$(echo -e "$line" | $BIN_DIR/busybox sed -n 's/^ROM_NAME="[^"]*"[[:space:]]*\(.*\)/\1/p')
+value=$(echo "$line" | $BIN_DIR/busybox sed -n 's/^ROM_NAME="\([^"]*\)".*/\1/p')
+#comment=$(echo "$line" | $BIN_DIR/busybox sed -n 's/^ROM_NAME="[^"]*"[[:space:]]*\(.*\)/\1/p')
 #echo -e "Current ROM Name: $value"
-#echo -e "Sanitized: $(echo -e "$value" | $BIN_DIR/busybox tr ' ' '_' | $BIN_DIR/busybox tr -cd '[:alnum:]_-')"
+#echo -e "Sanitized: $(echo "$value" | $BIN_DIR/busybox tr ' ' '_' | $BIN_DIR/busybox tr -cd '[:alnum:]_-')"
 
 # Sanitize ROM name by removing non-alphanum and replace space with _ underscore
-sanitized_name=$(echo -e "$value" | $BIN_DIR/busybox tr ' ' '_' | $BIN_DIR/busybox tr -cd '[:alnum:]_-')
+sanitized_name=$(echo "$value" | $BIN_DIR/busybox tr ' ' '_' | $BIN_DIR/busybox tr -cd '[:alnum:]_-')
 
 # Generate ASCII and replace in autoinstaller.conf
 $BIN_DIR/figlet -f $BIN_DIR/standard.flf -w 100 $value > $BIN_DIR/ascii
@@ -886,7 +880,7 @@ all_bases=("${bases_linux[@]}" "${bases_windows[@]}")
 for base in "${all_bases[@]}"; do
   src="$TARGET_DIR/$base"
   if [ -f "$src" ]; then
-    new_name=$(echo -e "$base" | $BIN_DIR/busybox sed "s/forge/$sanitized_name/")
+    new_name=$(echo "$base" | $BIN_DIR/busybox sed "s/forge/$sanitized_name/")
     $BIN_DIR/busybox mv "$src" "$TARGET_DIR/$new_name"
     #echo -e "Renamed: $base → $new_name"
   fi
