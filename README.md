@@ -19,7 +19,7 @@
 3. Click, **Run workflow** then **Fill in the form** with your ROM details
 4. Now, Click on **Run workflow in bottom** and **Wait for completion**: ~5-8 minutes depending on ROM size
 5. **Download artifact**: Your `<rom>_FASTBOOT_RECOVERY.zip` from the workflow run
-6. **Usage: how to flash via fastboot or recovery [`see below for instructions...`](https://github.com/ArKT-7/Auto-Installer-Forge/edit/main/README.md#-how-to-use-the-generated-auto-installer-zip)**
+6. **Usage: how to flash via fastboot or recovery [`see below for instructions...`](https://github.com/ArKT-7/Auto-Installer-Forge/tree/main#-how-to-use-the-generated-auto-installer-zip)**
 
 ---
 
