@@ -403,7 +403,7 @@ fi
 
 # Extract the filename (without extension) from the selected ZIP file
 ZIP_NAME=$($BIN_DIR/busybox basename "$SELECTED_ZIP_FILE" .zip)
-TARGET_DIR="$WORK_DIR/${ZIP_NAME}_FASTBOOT_RECOVERY"
+TARGET_DIR="$WORK_DIR/Auto-Installer_${ZIP_NAME}_FASTBOOT_RECOVERY"
 
 # Create the directory
 $BIN_DIR/busybox mkdir -p "$TARGET_DIR"
