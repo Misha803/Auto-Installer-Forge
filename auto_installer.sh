@@ -14,6 +14,8 @@ URL_FIGLET="$BASE_URL/bin/linux_amd64/figlet"
 URL_FONT1="$BASE_URL/bin/figlet_fonts/standard.flf"
 URL_FONT2="$BASE_URL/bin/figlet_fonts/nancyj.flf"
 URL_FONT3="$BASE_URL/bin/figlet_fonts/sblood.flf"
+URL_7ZZS="$BASE_URL/bin/linux_amd64/7zzs"
+URL_SIMG2IMG="$BASE_URL/bin/linux_amd64/simg2img"
 
 current_dir=$(basename "$PWD")
 if [ "$current_dir" = "Auto-Installer-Forge" ]; then
@@ -130,7 +132,7 @@ patch_magisk_boot() {
     log "[INFO] Patching boot.img with Magisk..\n"
 
     # Unzip only assets and lib folders; if unzip fails, exit
-    if ! $BIN_DIR/busybox unzip -q -o "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/$1" "assets/*" "lib/*" -d "$MAGISK_DIR"; then
+    if ! $BIN_DIR/7zzs x "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/$1" "assets/*" "lib/*" -o"$MAGISK_DIR" -y > /dev/null; then
         log "[ERROR] Failed to unzip Magisk APK"
         return 1
     fi
@@ -231,13 +233,13 @@ update_field() {
     echo -e "$label updated to: $new_value\n"
 }
 
-# Start payload zip selector
-get_payload_zip_path() {
+# Modified to detect both Payload and Fastboot ROMs
+get_rom_zip_path() {
     local INPUT_PATH="$1"
     INPUT_PATH=$(realpath "$INPUT_PATH" 2>/dev/null)
 
     if [ -z "$INPUT_PATH" ] || [ ! -e "$INPUT_PATH" ]; then
-        echo -e "\nPlease enter the full path to an AOSP ROM ZIP file or a folder containing multiple ROM ZIPs:\n"
+        echo -e "\nPlease enter the full path to an AOSP/FASTBOOT/PORT ROM ZIP file or a folder containing multiple ROM ZIPs:\n"
         read -r INPUT_PATH
         echo " "
     fi
@@ -252,20 +254,35 @@ get_payload_zip_path() {
     candidate_zips=()
     count=0
 
+    check_zip_type() {
+        local zip_file="$1"
+        if $BIN_DIR/7zzs l "$zip_file" 2>/dev/null | grep -q "payload.bin"; then
+            echo "payload"
+        elif $BIN_DIR/7zzs l "$zip_file" 2>/dev/null | grep -q "super.img"; then
+            echo "fastboot"
+        else
+            echo "unknown"
+        fi
+    }
+
     if [ -d "$INPUT_PATH" ]; then
-        log "[INFO] Searching for payload-containing ZIP files in the specified folder..."
+        log "[INFO] Searching for valid ROM ZIP files in the specified folder..."
+        SAVEIFS=$IFS
+        IFS=$(echo -en "\n\b")
         for zip in $(find "$INPUT_PATH" -type f -name "*.zip"); do
-            if $BIN_DIR/busybox unzip -l "$zip" | $BIN_DIR/busybox grep -q "payload.bin"; then
+            type=$(check_zip_type "$zip")
+            if [ "$type" != "unknown" ]; then
                 candidate_zips[count]="$zip"
                 count=$((count + 1))
             fi
         done
+        IFS=$SAVEIFS
 
     elif [ -f "$INPUT_PATH" ]; then
         case "$INPUT_PATH" in
             *.zip)
-                log "[INFO] Checking the specified ZIP file for payload.bin..."
-                if $BIN_DIR/busybox unzip -l "$INPUT_PATH" | $BIN_DIR/busybox grep -q "payload.bin"; then
+                type=$(check_zip_type "$INPUT_PATH")
+                if [ "$type" != "unknown" ]; then
                     candidate_zips[0]="$INPUT_PATH"
                     count=1
                 fi
@@ -281,19 +298,24 @@ get_payload_zip_path() {
     fi
 
     if [ "$count" -eq 0 ]; then
-        log "[ERROR] No valid ZIP files containing payload.bin were found."
+        log "[ERROR] No valid ROM files (payload.bin or super.img) found."
         return 1
 
     elif [ "$count" -eq 1 ]; then
-        log "[SUCCESS] Matching ZIP file found."
         SELECTED_ZIP_FILE="${candidate_zips[0]}"
+        ROM_TYPE=$(check_zip_type "$SELECTED_ZIP_FILE")
+        log "[SUCCESS] Found $ROM_TYPE ROM: $(basename "$SELECTED_ZIP_FILE")"
         return 0
     else
-        echo -e "\n[INFO] Multiple ZIP files containing payload.bin were found:\n"
+        echo -e "\n[INFO] Multiple ROM files found:\n"
+        SAVEIFS=$IFS
+        IFS=$(echo -en "\n\b")
         for i in $(seq 0 $((count - 1))); do
             index=$((i + 1))
-            echo -e "$index) ${candidate_zips[$i]}"
+            type=$(check_zip_type "${candidate_zips[$i]}")
+            echo -e "$index) [${type}] $(basename "${candidate_zips[$i]}")"
         done
+        IFS=$SAVEIFS
 
         valid=0
         while [ "$valid" -eq 0 ]; do
@@ -303,6 +325,7 @@ get_payload_zip_path() {
                 index=$((selection - 1))
                 if [ "$index" -ge 0 ] && [ "$index" -lt "$count" ]; then
                     SELECTED_ZIP_FILE="${candidate_zips[$index]}"
+                    ROM_TYPE=$(check_zip_type "$SELECTED_ZIP_FILE")
                     valid=1
                 else
                     echo -e "[ERROR] Invalid selection. Please enter a valid number between 1 and $count."
@@ -321,7 +344,15 @@ echo -e "This script is Written and Made By °⊥⋊ɹ∀°, Telegram - '@ArKT_7
 
 AVAILABLE_SPACE=$(df "$WORK_DIR" | awk 'NR==2 {print $4}')
 if [ "$AVAILABLE_SPACE" -lt 15000000 ]; then
-    log "[ERROR] Not enough space. Need at least 15GB free!"
+    log "[ERROR] Not enough space in $WORK_DIR. Need at least 15GB free!"
+    echo -e "\n[INFO] Current Disk Usage Table:"
+    echo "------------------------------------------------------------"
+    if [ -f "$BIN_DIR/busybox" ]; then
+        $BIN_DIR/busybox df -h
+    else
+        df -h
+    fi
+    echo "------------------------------------------------------------"
     exit 1
 fi
 
@@ -334,6 +365,8 @@ download_and_set_permissions "$URL_FIGLET" "$BIN_DIR/figlet"
 download_and_set_permissions "$URL_FONT1" "$BIN_DIR/standard.flf"
 download_and_set_permissions "$URL_FONT2" "$BIN_DIR/nancyj.flf"
 download_and_set_permissions "$URL_FONT3" "$BIN_DIR/sblood.flf"
+download_and_set_permissions "$URL_7ZZS" "$BIN_DIR/7zzs"
+download_and_set_permissions "$URL_SIMG2IMG" "$BIN_DIR/simg2img"
 
 # URL to the checksum file
 CHECKSUM_FILE="$BIN_DIR/checksum.arkt"
@@ -393,11 +426,16 @@ if [ -d "$WORK_DIR" ]; then
     fi
 fi
 
-if get_payload_zip_path "$1"; then
-    log "[INFO] Using payload ZIP: $SELECTED_ZIP_FILE"
+if get_rom_zip_path "$1"; then
+    log "[INFO] Selected $ROM_TYPE ZIP: $SELECTED_ZIP_FILE"
     export SELECTED_PAYLOAD_ZIP="$SELECTED_ZIP_FILE"
+    if [ "$ROM_TYPE" = "fastboot" ]; then
+        IS_FASTBOOT_ROM=1
+    else
+        IS_FASTBOOT_ROM=0
+    fi
 else
-    log "[ERROR] No valid payload zip selected. Exiting.\n"
+    log "[ERROR] No valid zip selected. Exiting.\n"
     exit 1
 fi
 
@@ -408,29 +446,81 @@ TARGET_DIR="$WORK_DIR/Auto-Installer_${ZIP_NAME}_FASTBOOT_RECOVERY"
 # Create the directory
 $BIN_DIR/busybox mkdir -p "$TARGET_DIR"
 
-# Unzip only the payload.bin file into the created directory
-echo " "
-echo -e "Extracting payload.bin"
-$BIN_DIR/busybox unzip -o "$SELECTED_ZIP_FILE" "payload.bin" -d "$TARGET_DIR"
+if [ "$ROM_TYPE" = "payload" ]; then
+    echo " "
+    echo -e "Extracting payload.bin..."
+    $BIN_DIR/7zzs e "$SELECTED_ZIP_FILE" "payload.bin" -o"$TARGET_DIR" -y > /dev/null
+    [ ! -f "$TARGET_DIR/payload.bin" ] && { echo -e "[ERROR] payload.bin extraction failed."; exit 1; }
+    PAYLOAD_FILE="$TARGET_DIR/payload.bin"
 
-# Check if extraction was successful
-if [ ! -f "$TARGET_DIR/payload.bin" ]; then
-    echo -e "[ERROR] payload.bin not found in the selected ZIP. Exiting."
-    exit 1
-fi
+    echo -e "payload.bin extraction complete."
+    
+    log "[INFO] Extracting payload.bin..."
+    echo " "
+    if [ -n "$1" ]; then
+        $BIN_DIR/payload-dumper-go -l "$PAYLOAD_FILE"
+        $BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" > /dev/null 2>&1 || { log "[ERROR] Extraction failed!"; exit 1; }
+    else
+        $BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" || { log "[ERROR] Extraction failed!"; exit 1; }
+    fi
+    FILES_TO_CLEANUP=("$PAYLOAD_FILE")
 
-# Store the extracted payload.bin path in $PAYLOAD_FILE
-PAYLOAD_FILE="$TARGET_DIR/payload.bin"
-
-echo -e "payload.bin extraction complete."
-
-log "[INFO] Extracting payload.bin..."
-echo " "
-if [ -n "$1" ]; then
-  $BIN_DIR/payload-dumper-go -l "$PAYLOAD_FILE"
-  $BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" > /dev/null 2>&1 || { log "[ERROR] Extraction failed!"; exit 1; }
 else
-  $BIN_DIR/payload-dumper-go -o "$TARGET_DIR" "$PAYLOAD_FILE" || { log "[ERROR] Extraction failed!"; exit 1; }
+    log "[INFO] Fastboot ROM detected. Extracting all files Please wait..."
+    TEMP_EXTRACT_DIR="$TARGET_DIR/Forge-temp"
+    $BIN_DIR/busybox mkdir -p "$TEMP_EXTRACT_DIR"
+
+    $BIN_DIR/7zzs x "$SELECTED_ZIP_FILE" -o"$TEMP_EXTRACT_DIR" -y > /dev/null
+    log "[INFO] Searching and moving required firmware images..."
+    
+    REQUIRED_FILES="super.img boot.img dtbo.img vendor_boot.img"
+    MISSING_FILES=0
+    
+    for file in $REQUIRED_FILES; do
+        FOUND_PATH=$($BIN_DIR/busybox find "$TEMP_EXTRACT_DIR" -name "$file" -type f | $BIN_DIR/busybox head -n 1)
+        if [ -n "$FOUND_PATH" ]; then
+            $BIN_DIR/busybox mv "$FOUND_PATH" "$TARGET_DIR/"
+        else
+            log "[ERROR] Critical file '$file' not found in extracted ROM!"
+            MISSING_FILES=1
+        fi
+    done
+
+    log "[INFO] Deleting temporary extraction folder..."
+    $BIN_DIR/busybox rm -rf "$TEMP_EXTRACT_DIR"
+
+    if [ "$MISSING_FILES" -eq 1 ]; then
+        log "[ERROR] Missing required partition images. Exiting."
+        exit 1
+    fi
+
+    log "[INFO] Unpacking super.img..."
+    
+    if $BIN_DIR/lpunpack "$TARGET_DIR/super.img" "$TARGET_DIR" > /dev/null 2>&1; then
+        log "[SUCCESS] super.img unpacked successfully."
+    else
+        log "[INFO] Direct unpack failed. Image is likely sparse. Converting to raw..."
+        mv "$TARGET_DIR/super.img" "$TARGET_DIR/super.sparse.img"
+        if $BIN_DIR/simg2img "$TARGET_DIR/super.sparse.img" "$TARGET_DIR/super.img"; then
+            log "[SUCCESS] Converted sparse image to raw."
+            rm "$TARGET_DIR/super.sparse.img"
+            
+            if $BIN_DIR/lpunpack "$TARGET_DIR/super.img" "$TARGET_DIR"; then
+                log "[SUCCESS] super.img unpacked successfully."
+            else
+                log "[ERROR] Failed to unpack super.img even after conversion!"
+                exit 1
+            fi
+        else
+            log "[ERROR] Failed to convert sparse image! (simg2img failed)"
+            exit 1
+        fi
+    fi
+
+    rm "$TARGET_DIR/super.img"
+    $BIN_DIR/busybox find "$TARGET_DIR" -maxdepth 1 -name "*_b.img" -type f -size 0c -delete
+    FILES_TO_CLEANUP=() 
+    log "[SUCCESS] Fastboot images prepared."
 fi
 log "[SUCCESS] Extraction completed."
 
@@ -494,7 +584,11 @@ $BIN_DIR/busybox truncate -s "$TOTAL_SIZE" "$TARGET_DIR/super.img"
 echo -e "[SUCCESS] Truncation complete."
 
 log "[INFO] Cleaning up payload.bin extracted img's..."
-rm_files=("${checksum_files[@]}" "$PAYLOAD_FILE")
+if [ -n "$PAYLOAD_FILE" ]; then
+    rm_files=("${checksum_files[@]}" "$PAYLOAD_FILE")
+else
+    rm_files=("${checksum_files[@]}")
+fi
 $BIN_DIR/busybox rm -f "${rm_files[@]}"
 echo -e "[SUCCESS] Cleanup complete."
 
@@ -600,46 +694,71 @@ download_with_fallback \
     "$TARGET_DIR/META-INF/com/arkt/mke2fs" \
     "mke2fs"
 
+if [ "$IS_FASTBOOT_ROM" -eq 1 ]; then
+    SCRIPT_BASE_URL="$BASE_URL/auto-installer-scripts/port"
+    PREFIX="port-"
+    log "[INFO] Fastboot ROM detected. Downloading specialized scripts from 'port' folder..."
+    log "[INFO] Downloading Firmware (fw.zip)..."
+    download_with_fallback \
+        "$SCRIPT_BASE_URL/fw.zip" \
+        "$SCRIPT_BASE_URL/fw.zip" \
+        "$TARGET_DIR/fw.zip" \
+        "fw.zip"
+    
+    log "[INFO] Extracting fw.zip to images folder..."
+    if $BIN_DIR/7zzs e "$TARGET_DIR/fw.zip" -o"$TARGET_DIR/images/" -y > /dev/null; then
+        log "[SUCCESS] Firmware extracted."
+        $BIN_DIR/busybox rm "$TARGET_DIR/fw.zip"
+    else
+        log "[ERROR] Failed to extract fw.zip! Check if the file is valid."
+        exit 1
+    fi
+else
+    SCRIPT_BASE_URL="$BASE_URL/auto-installer-scripts"
+    PREFIX=""
+fi
+
 download_with_fallback \
-    "$BASE_URL/auto-installer-scripts/update-binary" \
-    "$BASE_URL/auto-installer-scripts/update-binary" \
+    "$SCRIPT_BASE_URL/update-binary" \
+    "$SCRIPT_BASE_URL/update-binary" \
     "$TARGET_DIR/META-INF/com/google/android/update-binary" \
-    "update-binary"
+    "${PREFIX}update-binary"
 	
 download_with_fallback \
-    "$BASE_URL/auto-installer-scripts/updater-script" \
-    "$BASE_URL/auto-installer-scripts/updater-script" \
+    "$SCRIPT_BASE_URL/updater-script" \
+    "$SCRIPT_BASE_URL/updater-script" \
     "$TARGET_DIR/META-INF/com/google/android/updater-script" \
-    "updater-script"
+    "${PREFIX}updater-script"
 
 download_with_fallback \
     "$BASE_URL/auto-installer-scripts/autoinstaller.conf" \
     "$BASE_URL/auto-installer-scripts/autoinstaller.conf" \
     "$TARGET_DIR/META-INF/autoinstaller.conf" \
+    "autoinstaller.conf"
 
 download_with_fallback \
-    "$BASE_URL/auto-installer-scripts/install_forge_linux.sh" \
-    "$BASE_URL/auto-installer-scripts/install_forge_linux.sh" \
+    "$SCRIPT_BASE_URL/install_forge_linux.sh" \
+    "$SCRIPT_BASE_URL/install_forge_linux.sh" \
     "$TARGET_DIR/install_forge_linux.sh" \
-    "install_forge_linux.sh"
+    "${PREFIX}install_forge_linux.sh"
 	
 download_with_fallback \
-    "$BASE_URL/auto-installer-scripts/install_forge_windows.bat" \
-    "$BASE_URL/auto-installer-scripts/install_forge_windows.bat" \
+    "$SCRIPT_BASE_URL/install_forge_windows.bat" \
+    "$SCRIPT_BASE_URL/install_forge_windows.bat" \
     "$TARGET_DIR/install_forge_windows.bat" \
-    "install_forge_windows.bat"
+    "${PREFIX}install_forge_windows.bat"
 	
 download_with_fallback \
-    "$BASE_URL/auto-installer-scripts/update_forge_linux.sh" \
-    "$BASE_URL/auto-installer-scripts/update_forge_linux.sh" \
+    "$SCRIPT_BASE_URL/update_forge_linux.sh" \
+    "$SCRIPT_BASE_URL/update_forge_linux.sh" \
     "$TARGET_DIR/update_forge_linux.sh" \
-    "update_forge_linux.sh"
+    "${PREFIX}update_forge_linux.sh"
 	
 download_with_fallback \
-    "$BASE_URL/auto-installer-scripts/update_forge_windows.bat" \
-    "$BASE_URL/auto-installer-scripts/update_forge_windows.bat" \
+    "$SCRIPT_BASE_URL/update_forge_windows.bat" \
+    "$SCRIPT_BASE_URL/update_forge_windows.bat" \
     "$TARGET_DIR/update_forge_windows.bat" \
-    "update_forge_windows.bat"
+    "${PREFIX}update_forge_windows.bat"
 
 log "[INFO] Downloading Platform-tools and required tools for Auto-Installer-Forge script...\n"
 
@@ -650,7 +769,7 @@ download_with_fallback \
     "platform-tools-latest-linux.zip"
 	
 echo -e "[INFO] Extracting Linux platform-tools..."
-$BIN_DIR/busybox unzip -q "$TARGET_DIR/bin/linux/platform-tools-linux.zip" -d "$TARGET_DIR/bin/linux/"
+$BIN_DIR/7zzs x "$TARGET_DIR/bin/linux/platform-tools-linux.zip" -o"$TARGET_DIR/bin/linux/" -y > /dev/null
 log "[SUCCESS] Linux platform-tools extracted.\n"
 
 download_with_fallback \
@@ -660,7 +779,7 @@ download_with_fallback \
     "platform-tools-latest-windows.zip"
 
 echo -e "[INFO] Extracting Windows platform-tools..."
-$BIN_DIR/busybox unzip -q "$TARGET_DIR/bin/windows/platform-tools-windows.zip" -d "$TARGET_DIR/bin/windows/"
+$BIN_DIR/7zzs x "$TARGET_DIR/bin/windows/platform-tools-windows.zip" -o"$TARGET_DIR/bin/windows/" -y > /dev/null
 log "[SUCCESS] Windows platform-tools extracted.\n"
 
 download_with_fallback \
@@ -670,7 +789,7 @@ download_with_fallback \
     "tee-win32.2023-11-27.zip"
 	
 echo -e "[INFO] Extracting tee for logging in windows..."
-$BIN_DIR/busybox unzip -q "$TARGET_DIR/bin/windows/tee.zip" -d "$TARGET_DIR/bin/windows/log-tool/"
+$BIN_DIR/7zzs x "$TARGET_DIR/bin/windows/tee.zip" -o"$TARGET_DIR/bin/windows/log-tool/" -y > /dev/null
 log "[SUCCESS] TEE for windows extracted."
 
 log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n"
@@ -723,11 +842,22 @@ $BIN_DIR/busybox sed -i "/^HASH_PAIRS=(/r $tmp_hashes" "$CONF_FILE"
 #echo -e "[INFO] HASH_PAIRS inside autoinstaller.conf block updated with current img's in images folder"
 
 # Extract build date
-log "[INFO] Extracting build date from ROM..\n"
-raw_build_date=$(strings "$TARGET_DIR/images/super.img" | grep -m 1 'build.date=' | cut -d'=' -f2)
-parsed_input=$(echo "$raw_build_date" | $BIN_DIR/busybox sed -E 's/ [A-Z]{3} / /')
-parsed_build_date=$($BIN_DIR/busybox date -d "$parsed_input" -D "%a %b %d %T %Y" +"%d %b %Y")
-echo -e "Parsed date: $parsed_build_date"
+log "[INFO] Detecting build date..."
+
+if [ "$IS_FASTBOOT_ROM" -eq 1 ]; then
+    log "[INFO] Fastboot ROM detected. Reading ZIP metadata..."
+    raw_date=$($BIN_DIR/7zzs l "$SELECTED_ZIP_FILE" | grep "super.img" | head -n 1 | awk '{print $1}')
+    parsed_build_date=$($BIN_DIR/busybox date -d "$raw_date" +"%d %b %Y")
+    echo -e "Parsed date (Metadata): $parsed_build_date"
+
+else
+    log "[INFO] Extracting build date from ROM..\n"
+    raw_build_date=$(strings "$TARGET_DIR/images/super.img" | grep -m 1 'build.date=' | cut -d'=' -f2)
+    parsed_input=$(echo "$raw_build_date" | $BIN_DIR/busybox sed -E 's/ [A-Z]{3} / /')
+    parsed_build_date=$($BIN_DIR/busybox date -d "$parsed_input" -D "%a %b %d %T %Y" +"%d %b %Y")
+    echo -e "Parsed date: $parsed_build_date"
+fi
+
 update_field "BUILD_DATE" "Build date" "$parsed_build_date"
 
 log "[SUCCESS] Auto-Installer-Forge files processing finished!\n"
