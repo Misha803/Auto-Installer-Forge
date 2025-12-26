@@ -165,19 +165,19 @@ jobs:
       - name: Find output subfolder
         id: find_folder
         run: |
-          if [ -d "Auto-Installer-Forge/out" ] && [ "$(ls -A Auto-Installer-Forge/out)" ]; then
-            SUBFOLDER=$(ls -1 Auto-Installer-Forge/out | head -n1)
-            OUTPUT_BASE="Auto-Installer-Forge/out"
-          elif [ -d "out" ] && [ "$(ls -A out)" ]; then
-            SUBFOLDER=$(ls -1 out | head -n1)
-            OUTPUT_BASE="out"
+          if [ -f "final_product_path.txt" ]; then
+             FULL_PATH=$(cat final_product_path.txt)
+             echo "Detected Output Path: $FULL_PATH"
+
+             FOLDER_NAME=$(basename "$FULL_PATH")
+             PARENT_DIR=$(dirname "$FULL_PATH")
+             
+             echo "subfolder=$FOLDER_NAME" >> $GITHUB_OUTPUT
+             echo "output_base=$PARENT_DIR" >> $GITHUB_OUTPUT
           else
-            echo "No output folder found!"
-            exit 1
+             echo "Error: Could not find output path file. Script might have failed."
+             exit 1
           fi
-      
-          echo "subfolder=$SUBFOLDER" >> $GITHUB_OUTPUT
-          echo "output_base=$OUTPUT_BASE" >> $GITHUB_OUTPUT
 
       - name: Upload Auto-Installer zip file
         uses: actions/upload-artifact@v4

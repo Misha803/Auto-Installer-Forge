@@ -17,6 +17,7 @@ URL_FONT3="$BASE_URL/bin/figlet_fonts/sblood.flf"
 URL_7ZZS="$BASE_URL/bin/linux_amd64/7zzs"
 URL_SIMG2IMG="$BASE_URL/bin/linux_amd64/simg2img"
 
+ORIGINAL_DIR="$PWD"
 current_dir=$(basename "$PWD")
 if [ "$current_dir" = "Auto-Installer-Forge" ]; then
   BIN_DIR="$PWD/bin"
@@ -342,18 +343,51 @@ get_rom_zip_path() {
 echo -e "\nAutomating ROM conversion for easy Fastboot/Recovery flashing for Xiaomi Pad 5 (more devices planned)\n"
 echo -e "This script is Written and Made By °⊥⋊ɹ∀°, Telegram - '@ArKT_7', Github - 'ArKT-7'\n"
 
+REQUIRED_SPACE_KB=15000000
 AVAILABLE_SPACE=$(df "$WORK_DIR" | awk 'NR==2 {print $4}')
-if [ "$AVAILABLE_SPACE" -lt 15000000 ]; then
-    log "[ERROR] Not enough space in $WORK_DIR. Need at least 15GB free!"
-    echo -e "\n[INFO] Current Disk Usage Table:"
-    echo "------------------------------------------------------------"
-    if [ -f "$BIN_DIR/busybox" ]; then
-        $BIN_DIR/busybox df -h
+if [ "$AVAILABLE_SPACE" -lt "$REQUIRED_SPACE_KB" ]; then
+    log "[WARNING] Low disk space in $WORK_DIR! (Available: $((AVAILABLE_SPACE/1024)) MB)"
+    
+    CURRENT_MOUNT=$(df "$WORK_DIR" | awk 'NR==2 {print $6}')
+    AVAIL=$(df -P | awk -v req="$REQUIRED_SPACE_KB" -v cur="$CURRENT_MOUNT" 'NR>1 && $1 !~ /loop/ && $4 > req && $6 != cur {print $6}')
+    OTHER_PART=""
+    for mnt in $AVAIL; do
+        TARGET_BUILD_DIR="$mnt/Auto-Installer-Forge_Build"
+        if mkdir -p "$TARGET_BUILD_DIR" 2>/dev/null; then
+            OTHER_PART="$mnt"
+            break
+        elif command -v sudo >/dev/null 2>&1 && sudo mkdir -p "$TARGET_BUILD_DIR"; then
+            sudo chown "$(id -u):$(id -g)" "$TARGET_BUILD_DIR"
+            OTHER_PART="$mnt"
+            break
+        fi
+    done
+
+    if [ -n "$OTHER_PART" ]; then
+        echo -e "\n[INFO] Found available storage: $OTHER_PART"
+        echo -e "Would you like to switch workspace to '$OTHER_PART/Auto-Installer-Forge_Build'?"
+        echo -n "Confirm Switch? [Y/n] (Default: Y): "
+        read -r response
+        response=${response:-Y}
+        if echo "$response" | grep -Eq "^[Yy]$"; then
+            log "[INFO] Switching storage location..."
+            WORK_DIR="$OTHER_PART/Auto-Installer-Forge_Build/out"
+            mkdir -p "$WORK_DIR"
+            TARGET_DIR="$WORK_DIR/Auto-Installer_${ZIP_NAME}_FASTBOOT_RECOVERY"
+            mkdir -p "$TARGET_DIR"
+            log "[SUCCESS] New Workspace Active: $WORK_DIR"
+            NEW_AVAIL=$(df "$WORK_DIR" | awk 'NR==2 {print $4}')
+            echo -e "New Available Space: $((NEW_AVAIL/1024/1024)) GB"
+        else
+            log "[ERROR] Switch rejected. Exiting due to insufficient space."
+            exit 1
+        fi
     else
+        log "[ERROR] No writable partition with >15GB free space found (sudo attempt failed)."
+        echo -e "\n[INFO] Current Disk Usage:"
         df -h
+        exit 1
     fi
-    echo "------------------------------------------------------------"
-    exit 1
 fi
 
 # Download required binaries
@@ -1042,3 +1076,4 @@ echo -e "[SUCCESS] Cleanup complete."
 
 log "[NOTE] you can also change configrations in META-INF/autoinstaller.conf file anytime!"
 log "[COMPLETED] Auto-Installer-Forge process finished successfully!\n"
+echo "$TARGET_DIR" > "$ORIGINAL_DIR/final_product_path.txt"
