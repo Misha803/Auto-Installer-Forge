@@ -734,8 +734,8 @@ if [ "$IS_FASTBOOT_ROM" -eq 1 ]; then
     log "[INFO] Fastboot ROM detected. Downloading specialized scripts from 'port' folder..."
     log "[INFO] Downloading Firmware (fw.zip)..."
     download_with_fallback \
-        "$SCRIPT_BASE_URL/fw.zip" \
-        "$SCRIPT_BASE_URL/fw.zip" \
+        "$BASE_URL/files/fw.zip" \
+        "$BASE_URL/files/fw.zip" \
         "$TARGET_DIR/fw.zip" \
         "fw.zip"
     
