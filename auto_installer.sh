@@ -128,9 +128,9 @@ download_with_fallback() {
     fi
 }
 
-# Function to patch boot.img with magisk
-patch_magisk_boot() {
-    log "[INFO] Patching boot.img with Magisk..\n"
+# Function to extract magiskboot and libs
+extract_magisk_tools() {
+    log "[INFO] Extracting Magisk tools..."
 
     # Unzip only assets and lib folders; if unzip fails, exit
     if ! $BIN_DIR/7zzs x "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/$1" "assets/*" "lib/*" -o"$MAGISK_DIR" -y > /dev/null; then
@@ -163,6 +163,201 @@ patch_magisk_boot() {
         return 1
     fi
     chmod -R +x "$MAGISK_DIR/assets/"
+    export MAGISKBOOT="$MAGISK_DIR/assets/magiskboot"
+    return 0
+}
+
+# Function to patch boot and vendor_boot for TWRP Recovery
+patch_twrp_recovery() {
+    if [ -n "$1" ] && [ -f "$1" ]; then
+         INSTALL_TWRP=$(grep '^INSTALL_TWRP=' "$1" | cut -d'=' -f2)
+    fi
+
+    if [ -z "$INSTALL_TWRP" ]; then
+        echo -e "\nDo you want to integrate a Custom Recovery (TWRP) Ramdisk (Ensure kernel supports it)"
+        echo -e "1) Yes"
+        echo -e "2) No"
+        while true; do
+            echo -n "Enter selection (1-2): "
+            read -r choice
+            case "$choice" in
+                1) INSTALL_TWRP=1; break ;;
+                2) INSTALL_TWRP=0; break ;;
+                *) echo "Invalid option." ;;
+            esac
+        done
+        #update_field "INSTALL_TWRP" "Install TWRP" "$INSTALL_TWRP"
+    fi
+
+    [ "$INSTALL_TWRP" -ne 1 ] && return 0
+    TWRP_RAMDISK_PATH="$BIN_DIR/ramdisk.cpio"
+    
+    log "[INFO] Downloading TWRP Ramdisk..."
+    download_with_fallback \
+        "$BASE_URL/files/ramdisk.cpio" \
+        "$BASE_URL/files/ramdisk.cpio" \
+        "$TWRP_RAMDISK_PATH" \
+        "ramdisk.cpio"
+
+    if [ ! -f "$TWRP_RAMDISK_PATH" ]; then
+        log "[WARNING] Ramdisk download failed, Skipping TWRP integration..."
+        return 0
+    fi
+
+    log "[INFO] Starting TWRP Ramdisk Integration..."
+    local BOOT_IMG="$TARGET_DIR/images/boot.img"
+    local VENDOR_BOOT_IMG="$TARGET_DIR/images/vendor_boot.img"
+    local WORK_ROOT="$TARGET_DIR/twrp_patch_work"
+    local WORK_BOOT="$WORK_ROOT/boot"
+    local WORK_VENDOR="$WORK_ROOT/vendor"
+
+    if [ -z "$MAGISKBOOT" ] || [ ! -f "$MAGISKBOOT" ]; then
+        MAGISKBOOT="$MAGISK_DIR/assets/magiskboot"
+    fi
+    $BIN_DIR/busybox mkdir -p "$WORK_BOOT" "$WORK_VENDOR"
+    
+
+    log "[INFO] Patching boot.img with TWRP ramdisk..."
+    if ! cd "$WORK_BOOT"; then log "[ERROR] Work dir error, Skipping..."; return 0; fi
+    
+    "$MAGISKBOOT" unpack "$BOOT_IMG" > unpack.log 2>&1
+    if [ ! -f "kernel" ]; then
+         log "[WARNING] Failed to unpack boot.img, Skipping TWRP..."
+         cd "$ORIGINAL_DIR"
+         $BIN_DIR/busybox rm -rf "$WORK_ROOT"
+         return 0
+    fi
+
+    $BIN_DIR/busybox rm -f "ramdisk.cpio"
+    $BIN_DIR/busybox cp "$TWRP_RAMDISK_PATH" "ramdisk.cpio"
+    "$MAGISKBOOT" repack "$BOOT_IMG" > repack.log 2>&1
+    
+    if [ -f "new-boot.img" ]; then
+        $BIN_DIR/busybox mv "new-boot.img" "twrp-boot.img"
+        log "[INFO] boot.img patched successfully (will do vendor_boot patch now)..."
+    else
+        log "[WARNING] Failed to repack boot.img, Skipping TWRP..."
+        cd "$ORIGINAL_DIR"
+        $BIN_DIR/busybox rm -rf "$WORK_ROOT"
+        return 0
+    fi
+
+
+    log "[INFO] Patching vendor_boot.img fstab..."
+    if ! cd "$WORK_VENDOR"; then log "[ERROR] Work dir error, Skipping..."; return 0; fi
+    
+    "$MAGISKBOOT" unpack "$VENDOR_BOOT_IMG" > unpack.log 2>&1
+    if [ ! -f "ramdisk.cpio" ]; then
+         log "[WARNING] Failed to unpack vendor_boot.img, Skipping Vendor patch..."
+         cd "$ORIGINAL_DIR"
+         $BIN_DIR/busybox rm -rf "$WORK_ROOT"
+         return 0
+    fi
+    
+    $BIN_DIR/busybox mkdir -p ramdisk_contents
+    cd ramdisk_contents
+    
+    # Use system cpio if available, fallback to busybox
+    if command -v cpio >/dev/null 2>&1; then
+        cpio -idm < ../ramdisk.cpio 2> ../cpio_err.log
+    else
+        $BIN_DIR/busybox cpio -idm < ../ramdisk.cpio 2> ../cpio_err.log
+    fi
+    
+    # Filter out harmless warnings
+    grep -vE "cpio: .: File exists|[0-9]+ blocks" ../cpio_err.log > ../cpio_filtered_err.log
+    if [ -s "../cpio_filtered_err.log" ]; then
+         log "[WARNING] Real extraction errors found in vendor ramdisk, Skipping Vendor patch..."
+         cd "$ORIGINAL_DIR"
+         $BIN_DIR/busybox rm -rf "$WORK_ROOT"
+         return 0
+    fi
+    
+    $BIN_DIR/busybox mkdir -p first_stage_ramdisk
+    fstab_file=$(find . -type f -name "fstab.qcom" -not -path "./first_stage_ramdisk/*" | head -n 1)
+    if [ -z "$fstab_file" ]; then
+        log "[INFO] fstab.qcom not found outside, Searching inside first_stage_ramdisk..."
+        fstab_file=$(find ./first_stage_ramdisk -type f -name "fstab.qcom" | head -n 1)
+    else
+        log "[INFO] Deleting any fstab.qcom files inside first_stage_ramdisk..."
+        if [ -d "first_stage_ramdisk" ]; then
+            find first_stage_ramdisk -type f -name "fstab.qcom" -exec rm -v {} \; > /dev/null 2>&1
+        fi
+    fi
+    
+    if [ -n "$fstab_file" ]; then
+        mv "$fstab_file" first_stage_ramdisk/
+        log "[INFO] Moved $fstab_file to first_stage_ramdisk/"
+    else
+        log "[INFO] No fstab.qcom found — generating default..."
+        cat > first_stage_ramdisk/fstab.qcom <<'EOF'
+# The filesystem that contains the filesystem checker binary (typically /system) cannot
+# specify MF_CHECK, and must come before any filesystems that do specify MF_CHECK
+
+#TODO: ArKT Add 'check' as fs_mgr_flags with data partition.
+# Currently we dont have e2fsck compiled. So fs check would failed.
+
+#<src>                                                 <mnt_point>            <type>  <mnt_flags and options>                            <fs_mgr_flags>
+system                                                  /system                erofs   ro                                                   wait,slotselect,avb=vbmeta_system,logical,first_stage_mount,avb_keys=/avb/q-gsi.avbpubkey:/avb/r-gsi.avbpubkey:/avb/s-gsi.avbpubkey
+system                                                  /system                ext4    ro,barrier=1,discard                                 wait,slotselect,avb=vbmeta_system,logical,first_stage_mount,avb_keys=/avb/q-gsi.avbpubkey:/avb/r-gsi.avbpubkey:/avb/s-gsi.avbpubkey
+system_ext                                              /system_ext            erofs   ro                                                   wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+system_ext                                              /system_ext            ext4    ro,barrier=1,discard                                 wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+product                                                 /product               erofs   ro                                                   wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+product                                                 /product               ext4    ro,barrier=1,discard                                 wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+vendor                                                  /vendor                erofs   ro                                                   wait,slotselect,avb,logical,first_stage_mount
+vendor                                                  /vendor                ext4    ro,barrier=1,discard                                 wait,slotselect,avb,logical,first_stage_mount
+odm                                                     /odm                   erofs   ro                                                   wait,slotselect,avb,logical,first_stage_mount
+odm                                                     /odm                   ext4    ro,barrier=1,discard                                 wait,slotselect,avb,logical,first_stage_mount
+mi_ext                                                  /mnt/vendor/mi_ext     ext4    ro,barrier=1,discard                                 wait,slotselect,avb=vbmeta,logical,first_stage_mount,nofail
+mi_ext                                                  /mnt/vendor/mi_ext     erofs   ro                                                   wait,slotselect,avb=vbmeta,logical,first_stage_mount,nofail
+/dev/block/by-name/metadata                             /metadata              ext4    noatime,nosuid,nodev,discard                         wait,check,formattable,wrappedkey,first_stage_mount
+/dev/block/bootdevice/by-name/boot                      /boot                  emmc    defaults                                             recoveryonly
+/dev/block/bootdevice/by-name/userdata                  /data                  f2fs    noatime,nosuid,nodev,discard,reserve_root=32768,resgid=1065,fsync_mode=nobarrier,inlinecrypt     latemount,wait,check,formattable,fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0,metadata_encryption=aes-256-xts:wrappedkey_v0,keydirectory=/metadata/vold/metadata_encryption,quota,reservedsize=128M,checkpoint=fs
+/dev/block/bootdevice/by-name/modem                     /vendor/firmware_mnt   vfat    ro,shortname=lower,uid=1000,gid=1000,dmask=227,fmask=337,context=u:object_r:firmware_file:s0 wait,slotselect
+/dev/block/bootdevice/by-name/dsp                       /vendor/dsp            ext4    ro,nosuid,nodev,barrier=1                            wait,slotselect
+/dev/block/bootdevice/by-name/persist                   /mnt/vendor/persist    ext4    noatime,nosuid,nodev,barrier=1                       wait,check
+/dev/block/bootdevice/by-name/bluetooth                 /vendor/bt_firmware    vfat    ro,shortname=lower,uid=1002,gid=3002,dmask=227,fmask=337,context=u:object_r:bt_firmware_file:s0 wait,slotselect
+# Need to have this entry in here even though the mount point itself is no longer needed.
+# The update_engine code looks for this entry in order to determine the boot device address
+# and fails if it does not find it.
+/dev/block/bootdevice/by-name/misc                      /misc                  emmc    defaults                                             defaults
+/devices/platform/soc/*.ssusb/*.dwc3/xhci-hcd.*.auto* auto                   auto    defaults                                             wait,voldmanaged=usbotg:auto
+EOF
+    fi
+
+    find . -mindepth 1 ! -path './first_stage_ramdisk' ! -path './first_stage_ramdisk/*' -exec rm -rf {} +
+    if command -v cpio >/dev/null 2>&1; then
+        find . -mindepth 1 | cpio -o -H newc > ../new_ramdisk.cpio 2>/dev/null
+    else
+        find . -mindepth 1 | $BIN_DIR/busybox cpio -o -H newc > ../new_ramdisk.cpio 2>/dev/null
+    fi
+    cd "$WORK_VENDOR"
+    $BIN_DIR/busybox mv new_ramdisk.cpio ramdisk.cpio
+    "$MAGISKBOOT" repack "$VENDOR_BOOT_IMG" > repack.log 2>&1
+    
+    if [ -f "new-boot.img" ]; then
+        $BIN_DIR/busybox mv "new-boot.img" "$VENDOR_BOOT_IMG"
+        $BIN_DIR/busybox mv "$WORK_BOOT/twrp-boot.img" "$BOOT_IMG"
+        log "[SUCCESS] boot.img and vendor_boot.img patched successfully."
+    else
+        log "[WARNING] Failed to repack vendor_boot.img. Skipping (Original files untouched)."
+        return 0
+    fi
+
+    $BIN_DIR/busybox rm -rf "$WORK_ROOT"
+    cd "$ORIGINAL_DIR"
+    return 0
+}
+
+# Function to patch boot.img with magisk
+patch_magisk_boot() {
+    log "[INFO] Patching boot.img with Magisk..\n"
+
+    # Ensure binary is extracted (idempotent check)
+    if [ -z "$MAGISKBOOT" ] || [ ! -f "$MAGISKBOOT" ]; then
+        # Fallback to extract if not done by TWRP patcher
+        extract_magisk_tools "$1" || return 1
+    fi
 
     # Extract API version
     sdk_version=$(strings "$TARGET_DIR/images/super.img" | grep -m 1 'ro.build.version.sdk=' | cut -d'=' -f2)
@@ -840,16 +1035,18 @@ download_with_fallback \
     "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/Magisk_v30.6.apk" \
     "Magisk-v30.6.apk"
 
-# Call the funtion with magisk apk name
-patch_magisk_boot "Magisk_v30.6.apk"
 
 CONF_FILE="$TARGET_DIR/META-INF/autoinstaller.conf"
 if [ -n "$2" ] && [ -f "$2" ]; then
     echo -e "Replacing $CONF_FILE from $2"
     cp "$2" "$CONF_FILE"
 else
-    echo -e "Using default $CONF_FILE"
+    echo -e "\nUsing default $CONF_FILE"
 fi
+
+extract_magisk_tools "Magisk_v30.6.apk"
+patch_twrp_recovery "$CONF_FILE"
+patch_magisk_boot "Magisk_v30.6.apk"
 
 IMAGES_DIR="$TARGET_DIR/images"
 
