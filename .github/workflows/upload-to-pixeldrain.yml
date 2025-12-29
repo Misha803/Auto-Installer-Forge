@@ -1,0 +1,212 @@
+name: Upload to Pixeldrain
+on:
+  workflow_dispatch:
+    inputs:
+      run_url:
+        description: 'Full Action Run URL (e.g. https://github.com/User/Repo/actions/runs/123456)'
+        required: true
+        type: string
+      pixeldrain_api_key:
+        description: 'Pixeldrain API Key (Create account on pixeldrain to get one from API section)'
+        required: true
+        type: string
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Dependencies
+        run: pip install requests
+
+      - name: Run Migration
+        shell: python
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_RUN_URL: ${{ inputs.run_url }}
+          PIXELDRAIN_KEY: ${{ inputs.pixeldrain_api_key }}
+          REPO_CONTEXT: ${{ github.repository }}
+          PYTHONUTF8: 1
+        run: |
+          import os, time, subprocess, json, shutil, requests, sys, io, re
+          from requests.auth import HTTPBasicAuth
+          from requests.adapters import HTTPAdapter
+          from urllib3.util.retry import Retry
+
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+          run_url = os.environ.get('INPUT_RUN_URL', '').strip()
+          pixeldrain_key = os.environ.get('PIXELDRAIN_KEY', '').strip()
+          gh_token = os.environ.get('GH_TOKEN')
+          current_repo_context = os.environ.get('REPO_CONTEXT')
+
+          def track_progress(current, total, start_time, label):
+              if not hasattr(track_progress, "last_print"):
+                  track_progress.last_print = 0
+              
+              current_time = time.time()
+              
+              if current == 0 or current >= total or (current_time - track_progress.last_print > 5):
+                  track_progress.last_print = current_time
+                  elapsed = current_time - start_time
+                  current_mb = current / (1024 * 1024)
+                  total_mb = total / (1024 * 1024)
+                  speed = (current_mb / elapsed) if elapsed > 0 else 0
+                  percent = (current / total) * 100 if total > 0 else 0
+                  print(f" >> {label}: {percent:3.0f}% | {current_mb:7.2f}/{total_mb:7.2f} MB | {speed:6.2f} MB/s", flush=True)
+
+          class ProgressFileReader:
+              def __init__(self, filename, progress_callback):
+                  self._f = open(filename, 'rb')
+                  self._total_size = os.path.getsize(filename)
+                  self._read_so_far = 0
+                  self._callback = progress_callback
+                  self._start_time = time.time()
+
+              def read(self, size=-1):
+                  data = self._f.read(size)
+                  self._read_so_far += len(data)
+                  self._callback(self._read_so_far, self._total_size, self._start_time, "UPLOADING")
+                  return data
+
+              def __len__(self):
+                  return self._total_size
+
+              def close(self):
+                  self._f.close()
+
+              def seek(self, offset, whence=0):
+                  if offset == 0 and whence == 0:
+                      self._read_so_far = 0
+                      self._start_time = time.time()
+                  return self._f.seek(offset, whence)
+
+          def download_artifact(artifact_url, save_path, token):
+              headers = {"Authorization": f"Bearer {token}"}
+              print(f"\n[*] Initiating Download: {os.path.basename(save_path)}", flush=True)
+              
+              session = requests.Session()
+              retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+              session.mount('https://', HTTPAdapter(max_retries=retries))
+
+              with session.get(artifact_url, headers=headers, stream=True) as r:
+                  r.raise_for_status()
+                  total_size = int(r.headers.get('content-length', 0))
+                  start_time = time.time()
+                  downloaded = 0
+                  
+                  with open(save_path, 'wb') as f:
+                      for chunk in r.iter_content(chunk_size=8192):
+                          if chunk:
+                              f.write(chunk)
+                              downloaded += len(chunk)
+                              if total_size > 0:
+                                  track_progress(downloaded, total_size, start_time, "DOWNLOADING")
+              print(" >> DOWNLOAD COMPLETE", flush=True)
+
+          def upload_to_pixeldrain(file_path, api_key):
+              file_name = os.path.basename(file_path)
+              url = f"https://pixeldrain.com/api/file/{file_name}"
+              auth = HTTPBasicAuth('', api_key)
+
+              print(f"[*] Uploading to Pixeldrain (Authenticated)...", flush=True)
+              
+              session = requests.Session()
+              max_retries = 3
+              
+              wrapped_file = ProgressFileReader(file_path, track_progress)
+              
+              try:
+                  for attempt in range(1, max_retries + 1):
+                      try:
+                          wrapped_file.seek(0)
+                          response = session.put(url, data=wrapped_file, auth=auth)
+                          response.raise_for_status()
+                          data = response.json()
+                          
+                          if 'id' in data:
+                              file_id = data['id']
+                              return f"https://pixeldrain.com/u/{file_id}"
+                          else:
+                              print(f"\n[!] Unexpected response: {data}", flush=True)
+                              
+                      except Exception as e:
+                          print(f"\n[!] Upload Error (Attempt {attempt}/{max_retries}): {e}", flush=True)
+                          if attempt < max_retries:
+                              print("    Retrying in 5 seconds...", flush=True)
+                              time.sleep(5)
+                          else:
+                              return None
+              finally:
+                  wrapped_file.close()
+                  
+              return None
+
+          try:
+              if not pixeldrain_key:
+                  print("[!] Error: Pixeldrain API Key is required for GitHub Actions uploads.", flush=True)
+                  sys.exit(1)
+
+              run_match = re.search(r'actions/runs/(\d+)', run_url)
+              if run_match:
+                  run_id = run_match.group(1)
+              else:
+                  run_id = run_url.rstrip('/').split('/')[-1]
+              
+              repo_match = re.search(r'github\.com/([^/]+/[^/]+)/actions', run_url)
+              target_repo = repo_match.group(1) if repo_match else current_repo_context
+
+              print(f"[*] Target Repo: {target_repo}", flush=True)
+              print(f"[*] Run ID: {run_id}", flush=True)
+
+              print("[*] Fetching artifact list...", flush=True)
+              cmd = ['gh', 'api', f'repos/{target_repo}/actions/runs/{run_id}/artifacts']
+              art_info = subprocess.check_output(cmd).decode('utf-8')
+              artifacts = json.loads(art_info).get('artifacts', [])
+
+              if not artifacts:
+                  print("[!] No artifacts found.", flush=True)
+                  sys.exit(1)
+
+              temp_dir = f"temp_{run_id}"
+              os.makedirs(temp_dir, exist_ok=True)
+              final_links = []
+
+              for art in artifacts:
+                  print(f"\n    Processing: {art['name']}", flush=True)
+                  zip_name = f"{art['name']}.zip"
+                  zip_path = os.path.join(temp_dir, zip_name)
+                  
+                  download_artifact(art['archive_download_url'], zip_path, gh_token)
+                  
+                  link = upload_to_pixeldrain(zip_path, pixeldrain_key)
+                  if link:
+                      final_links.append({'name': zip_name, 'link': link})
+                      print(f"\n[*] Success: {link}", flush=True)
+                  else:
+                      print(f"\n[X] Failed to upload: {zip_name}", flush=True)
+
+              print("\n" + "="*60, flush=True)
+              print(" MIGRATION SUMMARY", flush=True)
+              print("="*60, flush=True)
+              for item in final_links:
+                  print(f" File: {item['name']}", flush=True)
+                  print(f" Link: {item['link']}", flush=True)
+                  print("-" * 60, flush=True)
+
+              if os.path.exists(temp_dir):
+                  shutil.rmtree(temp_dir)
+
+          except subprocess.CalledProcessError as e:
+              print(f"[!] GitHub API Error: {e}", flush=True)
+              sys.exit(1)
+          except Exception as e:
+              print(f"[!] Unexpected Error: {e}", flush=True)
+              sys.exit(1)
