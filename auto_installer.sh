@@ -1045,7 +1045,7 @@ else
 fi
 
 extract_magisk_tools "Magisk_v30.6.apk"
-patch_twrp_recovery "$CONF_FILE"
+patch_twrp_recovery "$2"
 patch_magisk_boot "Magisk_v30.6.apk"
 
 IMAGES_DIR="$TARGET_DIR/images"
