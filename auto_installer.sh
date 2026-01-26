@@ -452,11 +452,16 @@ get_rom_zip_path() {
 
     check_zip_type() {
         local zip_file="$1"
-        if $BIN_DIR/7zzs l "$zip_file" 2>/dev/null | grep -q "payload.bin"; then
+        local zip_content
+        zip_content=$($BIN_DIR/7zzs l "$zip_file" 2>/dev/null)
+        if echo "$zip_content" | grep -q "payload.bin"; then
             echo "payload"
-        elif $BIN_DIR/7zzs l "$zip_file" 2>/dev/null | grep -q "super.img"; then
+        elif echo "$zip_content" | grep -qE "super\.(img|zst|img\.zst)"; then
             echo "fastboot"
         else
+            echo -e "\n[DEBUG] Unkonwn ROM type for: $(basename "$zip_file")" >&2
+            echo -e "ZIP CONTENTS\n" >&2
+            echo "$zip_content" >&2
             echo "unknown"
         fi
     }
@@ -538,7 +543,7 @@ get_rom_zip_path() {
 echo -e "\nAutomating ROM conversion for easy Fastboot/Recovery flashing for Xiaomi Pad 5 (more devices planned)\n"
 echo -e "This script is Written and Made By °⊥⋊ɹ∀°, Telegram - '@ArKT_7', Github - 'ArKT-7'\n"
 
-REQUIRED_SPACE_KB=15000000
+REQUIRED_SPACE_KB=25000000
 AVAILABLE_SPACE=$(df "$WORK_DIR" | awk 'NR==2 {print $4}')
 if [ "$AVAILABLE_SPACE" -lt "$REQUIRED_SPACE_KB" ]; then
     log "[WARNING] Low disk space in $WORK_DIR! (Available: $((AVAILABLE_SPACE/1024)) MB)"
