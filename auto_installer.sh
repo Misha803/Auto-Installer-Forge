@@ -702,10 +702,10 @@ else
     $BIN_DIR/7zzs x "$SELECTED_ZIP_FILE" -o"$TEMP_EXTRACT_DIR" -y > /dev/null
     log "[INFO] Searching and moving required firmware images..."
     
-    REQUIRED_FILES="super.img boot.img dtbo.img vendor_boot.img"
+    STANDARD_FILES="boot.img dtbo.img vendor_boot.img"
     MISSING_FILES=0
     
-    for file in $REQUIRED_FILES; do
+    for file in $STANDARD_FILES; do
         FOUND_PATH=$($BIN_DIR/busybox find "$TEMP_EXTRACT_DIR" -name "$file" -type f | $BIN_DIR/busybox head -n 1)
         if [ -n "$FOUND_PATH" ]; then
             $BIN_DIR/busybox mv "$FOUND_PATH" "$TARGET_DIR/"
@@ -714,6 +714,44 @@ else
             MISSING_FILES=1
         fi
     done
+
+    log "[INFO] Finding super image..."
+    FOUND_SUPER=$($BIN_DIR/busybox find "$TEMP_EXTRACT_DIR" -name "super.img" -type f | $BIN_DIR/busybox head -n 1)
+
+    if [ -n "$FOUND_SUPER" ]; then
+        $BIN_DIR/busybox mv "$FOUND_SUPER" "$TARGET_DIR/"
+        log "[SUCCESS] Found super.img"
+    else
+        COMPRESSED_SUPER=$($BIN_DIR/busybox find "$TEMP_EXTRACT_DIR" -name "super.*" -type f | $BIN_DIR/busybox head -n 1)
+        if [ -n "$COMPRESSED_SUPER" ]; then
+            log "[INFO] Found compressed super image: $(basename "$COMPRESSED_SUPER")"
+            $BIN_DIR/busybox mv "$COMPRESSED_SUPER" "$TARGET_DIR/"
+            LOCAL_COMPRESSED="$TARGET_DIR/$(basename "$COMPRESSED_SUPER")"
+            log "[INFO] Decompressing $(basename "$LOCAL_COMPRESSED")"
+            if $BIN_DIR/7zzs e "$LOCAL_COMPRESSED" -o"$TARGET_DIR" -y > /dev/null; then
+                if [ ! -f "$TARGET_DIR/super.img" ]; then
+                    EXTRACTED_FILE=$($BIN_DIR/busybox find "$TARGET_DIR" -maxdepth 1 -name "super*" ! -name "$(basename "$LOCAL_COMPRESSED")" -type f | $BIN_DIR/busybox head -n 1)
+                    if [ -n "$EXTRACTED_FILE" ]; then
+                        mv "$EXTRACTED_FILE" "$TARGET_DIR/super.img"
+                        log "[INFO] Renamed extracted file to super.img"
+                    fi
+                fi
+                if [ -f "$TARGET_DIR/super.img" ]; then
+                    log "[SUCCESS] Decompression succsesful."
+                    rm -f "$LOCAL_COMPRESSED"
+                else
+                    log "[ERROR] Extraction ran but super.img could not be located."
+                    MISSING_FILES=1
+                fi
+            else
+                log "[ERROR] 7zzs failed to decompress the file."
+                MISSING_FILES=1
+            fi
+        else
+            log "[ERROR] Critical file 'super.img' (or compressed variant) not found!"
+            MISSING_FILES=1
+        fi
+    fi
 
     log "[INFO] Deleting temporary extraction folder..."
     $BIN_DIR/busybox rm -rf "$TEMP_EXTRACT_DIR"
@@ -1023,11 +1061,11 @@ log "[SUCCESS] TEE for windows extracted."
 
 log "[INFO] Now will Download KernelSU NEXT and Magisk APK for ROOT access!\n"
 
-download_with_fallback \
-    "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.1.1/KernelSU_Next_v1.1.1_12851-release.apk" \
-    "$BASE_URL/files/KernelSU_Next_v1.1.1.apk" \
-    "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.1.1.apk" \
-    "KernelSU_Next_v1.1.1.apk"
+# download_with_fallback \
+#     "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.1.1/KernelSU_Next_v1.1.1_12851-release.apk" \
+#     "$BASE_URL/files/KernelSU_Next_v1.1.1.apk" \
+#     "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.1.1.apk" \
+#     "KernelSU_Next_v1.1.1.apk"
 
 download_with_fallback \
     "https://github.com/topjohnwu/Magisk/releases/download/v30.6/Magisk-v30.6.apk" \
@@ -1137,11 +1175,38 @@ else
     $BIN_DIR/busybox sed -i "s/^FORMAT_DEFAULT=.*/FORMAT_DEFAULT=$FORMAT_MODE  # set 1 if want format default selected/" "$CONF_FILE"
 fi
 case "$ROOT_TYPE" in
-  1) root="Root with (KSU-N - Kernel SU NEXT)" ;;
-  2) root="Root with (KSU - Kernel SU)" ;;
-  3) root="Root with (SukiSU-Ultra)" ;;
+  1) root="Root with (KSU-N - Kernel SU NEXT)"
+    log "[INFO] Selected Kernel SU NEXT, Downloading APK..."
+    download_with_fallback \
+        "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.1.1/KernelSU_Next_v1.1.1_12851-release.apk" \
+        "$BASE_URL/files/KernelSU_Next_v1.1.1.apk" \
+        "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.1.1.apk" \
+        "KernelSU_Next_v1.1.1.apk"
+    ;;
+  2) root="Root with (KSU - Kernel SU)"
+    log "[INFO] Selected Kernel SU, Downloading APK..."
+    download_with_fallback \
+        "https://github.com/tiann/KernelSU/releases/download/v1.0.1/KernelSU_v1.0.1_11928-release.apk" \
+        "$BASE_URL/files/KernelSU_v1.0.1.apk" \
+        "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_v1.0.1.apk" \
+        "KernelSU_v1.0.1.apk"
+    ;;
+  3) root="Root with (SukiSU-Ultra)"
+    log "[INFO] Selected SukiSU-Ultra, Downloading APK..."
+    download_with_fallback \
+        "https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/download/v3.1.6/SukiSU_v3.1.6_13165-release.apk" \
+        "$BASE_URL/files/SukiSU_v3.1.6.apk" \
+        "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/SukiSU_v3.1.6.apk" \
+        "SukiSU_v3.1.6.apk"
+    ;;
   4) root="Without root" ;;
-  *) root="Root with (KSU-N - Kernel SU NEXT)" ;;
+  *) root="Root with (KSU-N - Kernel SU NEXT)"
+    download_with_fallback \
+        "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v1.1.1/KernelSU_Next_v1.1.1_12851-release.apk" \
+        "$BASE_URL/files/KernelSU_Next_v1.1.1.apk" \
+        "$TARGET_DIR/ROOT_APK_INSATLL_THIS_ONLY/KernelSU_Next_v1.1.1.apk" \
+        "KernelSU_Next_v1.1.1.apk"
+    ;;
 esac
 
 bases_linux=(install_forge_linux.sh update_forge_linux.sh)
