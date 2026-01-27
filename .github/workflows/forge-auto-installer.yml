@@ -109,13 +109,20 @@ jobs:
           URL="${{ github.event.inputs.rom_zip_url }}"
           mkdir -p input
           cd input
+          echo "Downloading..."
           curl -L -O -J "$URL"
-          filename=$(ls -1 *.zip | head -n1)
+          filename=$(ls -1 *.zip 2>/dev/null | head -n1)
           if [ -z "$filename" ]; then
-            echo "No zip file downloaded!"
+            echo "Error: Download failed, No .zip file found."
             exit 1
           fi
           echo "Downloaded file: input/$filename"
+          if ! unzip -lqq "$filename" > /dev/null; then
+             echo "Error: File is not a valid zip archive! (Likely an HTML landing page or corrupted download)"
+             exit 1
+          fi
+          
+          echo "Info: Download verified successfully."
           echo "filename=$filename" >> $GITHUB_OUTPUT
 
       - name: Map input strings to numbers for updating variables in conf
