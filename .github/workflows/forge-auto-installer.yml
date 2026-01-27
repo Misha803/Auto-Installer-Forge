@@ -75,6 +75,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Pre-check ROM zip content with PeekXtract
+        id: PeekXtract_check
+        run: |
+          echo "Downloading PeekXtract..."
+          curl -L -o PeekXtract https://github.com/ArKT-7/PeekXtract/releases/download/v2.0.3/PeekXtract
+          chmod +x PeekXtract
+          URL="${{ github.event.inputs.rom_zip_url }}"
+          echo "Scanning Remote ZIP: $URL"
+
+          set +e
+          echo "q" | ./PeekXtract "$URL" 2>&1 | tee PeekXtract_log.txt
+          set -e
+          echo "Analyzing PeekXtract results..."
+          
+          if grep -Fq "Download Options:" PeekXtract_log.txt; then
+              echo "PeekXtract successfully inspected the ZIP."
+              if grep -qE "payload\.bin|super\.(img|zst|img\.zst)" PeekXtract_log.txt; then
+                  echo "Info: Pre-check PASSED, Valid ROM structure detected."
+                  exit 0
+              else
+                  echo "Error: Pre-check FAILED, ZIP is readable but valid ROM files (payload.bin or super) are MISSING. Aborting."
+                  exit 1
+              fi
+          else
+              echo "Warning: PeekXtract could not verify the file (Network/Format issue), Proceeding without pre-check."
+              exit 0
+          fi
+
       - name: Download ROM zip with original filename
         id: download
         run: |
