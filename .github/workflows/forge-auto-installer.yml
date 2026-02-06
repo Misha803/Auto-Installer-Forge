@@ -111,12 +111,19 @@ jobs:
           cd input
           echo "Downloading..."
           curl -L -O -J "$URL"
-          filename=$(ls -1 *.zip 2>/dev/null | head -n1)
+          filename=$(ls -A | head -n1)
           if [ -z "$filename" ]; then
             echo "Error: Download failed, No .zip file found."
             exit 1
           fi
           echo "Downloaded file: input/$filename"
+          if [[ "$filename" =~ \.[zZ][iI][pP]$ ]]; then
+              echo "File has a valid .zip extension, Keeping original name"
+          else
+              echo "File is missing .zip extension (likely named 'download'), Renaming..."
+              mv "$filename" "rom.zip"
+              filename="rom.zip"
+          fi
           if ! unzip -lqq "$filename" > /dev/null; then
              echo "Error: File is not a valid zip archive! (Likely an HTML landing page or corrupted download)"
              exit 1
